@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Data Readiness Lab — Phase 1 MVP Architecture</title>
+<style>
+:root{--bg:#07111f;--panel:#0c1829;--line:#26364d;--text:#edf4ff;--muted:#9fb0c7;--cyan:#48d7ff;--green:#48e0a4;--violet:#b594ff;--amber:#ffc857;--rose:#ff7b9c}
+*{box-sizing:border-box} body{margin:0;background:radial-gradient(circle at 50% 0,#142743 0,#07111f 48%);color:var(--text);font:14px -apple-system,BlinkMacSystemFont,"SF Pro Display",Inter,Arial,sans-serif;padding:34px}.wrap{max-width:1220px;margin:auto}.eyebrow{color:var(--cyan);font-weight:700;letter-spacing:.13em;text-transform:uppercase;font-size:12px}h1{font-size:38px;margin:8px 0}.sub{color:var(--muted);font-size:17px;margin-bottom:28px}.board{background:rgba(12,24,41,.88);border:1px solid var(--line);border-radius:24px;padding:30px;box-shadow:0 24px 70px #0008}.flow{display:grid;grid-template-columns:1fr 52px 1fr 52px 1fr 52px 1fr 52px 1fr;align-items:stretch}.node{min-height:218px;border:1px solid;border-radius:18px;padding:18px;position:relative;background:#0a1525}.node h2{font-size:16px;margin:10px 0 7px}.node p{color:var(--muted);font-size:12px;line-height:1.45}.node ul{padding-left:17px;margin:14px 0 0;color:#d9e4f5;font-size:12px;line-height:1.65}.num{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:9px;font-weight:800}.source{border-color:#64748b}.source .num{background:#334155}.evidence{border-color:var(--amber)}.evidence .num{background:#6a4812;color:#ffe2a0}.canonical{border-color:var(--violet)}.canonical .num{background:#4f3786}.marts{border-color:var(--green)}.marts .num{background:#175b44}.consume{border-color:var(--cyan)}.consume .num{background:#155a70}.arrow{display:grid;place-items:center;color:#6f849f;font-size:28px}.tool{display:inline-block;margin-top:12px;border:1px solid #30455f;background:#111f32;border-radius:999px;padding:6px 10px;color:#fff;font:600 11px ui-monospace,SFMono-Regular,Menlo,monospace}.rule{margin:24px 0;border:none;border-top:1px solid var(--line)}.bottom{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:16px}.card{background:#091524;border:1px solid var(--line);border-radius:16px;padding:17px}.card h3{font-size:13px;margin:0 0 10px}.card p,.card li{color:var(--muted);font-size:12px;line-height:1.55}.card ul{margin:0;padding-left:17px}.highlight{color:var(--green);font-weight:700}.warn{color:var(--amber);font-weight:700}.footer{color:#71849e;font-size:11px;text-align:center;margin-top:18px}@media(max-width:900px){.flow{grid-template-columns:1fr}.arrow{height:44px;transform:rotate(90deg)}.bottom{grid-template-columns:1fr}}
+</style></head>
+<body><main class="wrap">
+<div class="eyebrow">Phase 1 · Local, low-cost, auditable</div>
+<h1>Data Readiness MVP Architecture</h1>
+<div class="sub">How messy Indonesian SME exports become trustworthy management numbers and safe AI-readable data.</div>
+<section class="board">
+<div class="flow">
+  <article class="node source"><span class="num">1</span><h2>Messy source exports</h2><p>What an SME can realistically provide.</p><ul><li>Orders CSV</li><li>Event JSON</li><li>Settlement CSV</li><li>Product spreadsheet</li><li>Duplicates + malformed rows</li></ul><span class="tool">generated fixtures</span></article>
+  <div class="arrow">→</div>
+  <article class="node evidence"><span class="num">2</span><h2>Immutable landing evidence</h2><p>Preserve what physically arrived before “cleaning” it.</p><ul><li>Raw bytes and SHA-256</li><li>Row locator and evidence ID</li><li>Accepted / duplicate / quarantine</li><li>Authenticated manifest</li></ul><span class="tool">Python + SQLite + files</span></article>
+  <div class="arrow">→</div>
+  <article class="node canonical"><span class="num">3</span><h2>Canonical business model</h2><p>Separate evidence from business meaning.</p><ul><li>Orders and order lines</li><li>Delivery / refund events</li><li>Settlements</li><li>Products and exceptions</li><li>Evidence lineage</li></ul><span class="tool">Python + JSONL</span></article>
+  <div class="arrow">→</div>
+  <article class="node marts"><span class="num">4</span><h2>Quality-gated marts</h2><p>Publish only when executable checks pass.</p><ul><li>Daily channel movement</li><li>Order lifetime economics</li><li>Settlement reconciliation</li><li>Executive controls</li><li>As-of cutoff protection</li></ul><span class="tool">Python + JSONL</span></article>
+  <div class="arrow">→</div>
+  <article class="node consume"><span class="num">5</span><h2>Management + AI access</h2><p>Small, governed surfaces instead of raw-data access.</p><ul><li>Exact schema catalog</li><li>Read-only artifacts</li><li>No customer/raw payloads</li><li>Quality and freshness warnings</li><li>Resolvable lineage</li></ul><span class="tool">AI-ready read views</span></article>
+</div>
+<hr class="rule">
+<div class="bottom">
+  <article class="card"><h3>Trust chain</h3><p><span class="highlight">Landing evidence is the source of truth.</span> Before marts publish, canonical data is independently rebuilt from authenticated landing evidence and compared byte-for-byte. A self-consistent forged manifest is therefore insufficient.</p></article>
+  <article class="card"><h3>Current tool stack</h3><ul><li>Python 3.11 standard library</li><li>SQLite for evidence registry</li><li>JSON / JSONL / CSV artifacts</li><li>SHA-256 manifests</li><li>unittest black-box tests</li><li>Git for version control</li></ul></article>
+  <article class="card"><h3>Deliberately not used yet</h3><ul><li>Databricks / Spark</li><li>Cloud warehouse</li><li>dbt / Airflow</li><li>Kafka / streaming</li><li>BI dashboard</li></ul><p><span class="warn">Reason:</span> first prove semantics and trust. Add scale tools only when volume or operations require them.</p></article>
+</div>
+<div class="footer">data-readiness-lab · Phase 1 MVP · commit ea993c9</div>
+</section></main></body></html>

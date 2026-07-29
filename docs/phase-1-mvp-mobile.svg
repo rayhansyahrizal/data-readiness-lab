@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920">
+<rect width="1080" height="1920" fill="#F6F7F9"/>
+<text x="540" y="108" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Arial" font-size="24" font-weight="700" fill="#3970D8" letter-spacing="3">PHASE 1 · LOW-COST SME PIPELINE</text>
+<text x="540" y="174" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Arial" font-size="48" font-weight="750" fill="#111827">From messy data</text>
+<text x="540" y="232" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Arial" font-size="48" font-weight="750" fill="#111827">to trusted decisions</text>
+<text x="540" y="279" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,Arial" font-size="23" fill="#64748B">The exact architecture and tools in the MVP</text>
+
+<!-- arrows behind cards -->
+<g stroke="#AAB6C6" stroke-width="6" fill="none" stroke-linecap="round"><path d="M540 544v42"/><path d="M540 808v42"/><path d="M540 1072v42"/><path d="M540 1336v42"/></g>
+<g fill="#AAB6C6"><path d="M526 574l14 18 14-18z"/><path d="M526 838l14 18 14-18z"/><path d="M526 1102l14 18 14-18z"/><path d="M526 1366l14 18 14-18z"/></g>
+
+<g font-family="-apple-system,BlinkMacSystemFont,Arial">
+<!-- card 1 -->
+<rect x="90" y="338" width="900" height="206" rx="32" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="3"/>
+<circle cx="164" cy="408" r="40" fill="#64748B"/><text x="164" y="421" text-anchor="middle" font-size="34" font-weight="800" fill="#FFF">1</text>
+<text x="228" y="407" font-size="35" font-weight="750" fill="#111827">MESSY EXPORTS</text>
+<text x="228" y="454" font-size="25" fill="#64748B">CSV · JSON · spreadsheets</text>
+<text x="130" y="507" font-size="22" fill="#475569">Duplicates, inconsistent formats, malformed rows</text>
+<!-- card 2 -->
+<rect x="90" y="602" width="900" height="206" rx="32" fill="#FFFFFF" stroke="#E2A93B" stroke-width="4"/>
+<circle cx="164" cy="672" r="40" fill="#D99A20"/><text x="164" y="685" text-anchor="middle" font-size="34" font-weight="800" fill="#FFF">2</text>
+<text x="228" y="671" font-size="35" font-weight="750" fill="#111827">LANDING EVIDENCE</text>
+<text x="228" y="718" font-size="25" fill="#64748B">Python · SQLite · SHA-256</text>
+<text x="130" y="771" font-size="22" fill="#475569">Preserve raw bytes, provenance, duplicates, quarantine</text>
+<!-- card 3 -->
+<rect x="90" y="866" width="900" height="206" rx="32" fill="#FFFFFF" stroke="#8B6FDB" stroke-width="4"/>
+<circle cx="164" cy="936" r="40" fill="#7658CA"/><text x="164" y="949" text-anchor="middle" font-size="34" font-weight="800" fill="#FFF">3</text>
+<text x="228" y="935" font-size="35" font-weight="750" fill="#111827">CANONICAL MODEL</text>
+<text x="228" y="982" font-size="25" fill="#64748B">Python · deterministic JSONL</text>
+<text x="130" y="1035" font-size="22" fill="#475569">Orders, business events, settlements, lineage</text>
+<!-- card 4 -->
+<rect x="90" y="1130" width="900" height="206" rx="32" fill="#FFFFFF" stroke="#3CB985" stroke-width="4"/>
+<circle cx="164" cy="1200" r="40" fill="#219B6B"/><text x="164" y="1213" text-anchor="middle" font-size="34" font-weight="800" fill="#FFF">4</text>
+<text x="228" y="1199" font-size="35" font-weight="750" fill="#111827">MANAGEMENT MARTS</text>
+<text x="228" y="1246" font-size="25" fill="#64748B">Sales · AOV · reconciliation</text>
+<text x="130" y="1299" font-size="22" fill="#475569">Executable quality checks block unsafe publication</text>
+<!-- card 5 -->
+<rect x="90" y="1394" width="900" height="206" rx="32" fill="#FFFFFF" stroke="#3995D5" stroke-width="4"/>
+<circle cx="164" cy="1464" r="40" fill="#257FB8"/><text x="164" y="1477" text-anchor="middle" font-size="34" font-weight="800" fill="#FFF">5</text>
+<text x="228" y="1463" font-size="35" font-weight="750" fill="#111827">SAFE AI READ VIEWS</text>
+<text x="228" y="1510" font-size="25" fill="#64748B">Exact schemas · read-only files</text>
+<text x="130" y="1563" font-size="22" fill="#475569">Quality warnings, evidence lineage, no raw PII</text>
+
+<rect x="126" y="1654" width="828" height="104" rx="52" fill="#E9F8F1" stroke="#279B6E" stroke-width="3"/>
+<circle cx="188" cy="1706" r="23" fill="#279B6E"/><path d="M177 1706l8 8 16-18" fill="none" stroke="#FFF" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="228" y="1717" font-size="27" font-weight="700" fill="#176B4A">Rebuild from evidence before publishing</text>
+
+<text x="540" y="1820" text-anchor="middle" font-size="21" fill="#64748B">No Databricks, Spark, dbt, or Airflow yet.</text>
+<text x="540" y="1854" text-anchor="middle" font-size="21" font-weight="650" fill="#334155">First prove trust and semantics. Scale later.</text>
+</g>
+</svg>
