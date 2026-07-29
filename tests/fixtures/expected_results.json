@@ -1,0 +1,50 @@
+{
+  "fixture_version": "1.0.0",
+  "business_timezone": "Asia/Jakarta",
+  "currency": "IDR",
+  "recognition_point": "delivery",
+  "orders": [
+    {"order_id":"TN-001","channel":"shopee","delivery_date":"2026-01-03","cancel_date":null,"list_idr":100000,"seller_discount_idr":0,"delivery_sales_idr":100000,"refund_effective_date":null,"refund_idr":0,"fee_idr":5000,"expected_receivable_idr":95000,"actual_settlement_idr":95000,"aov_eligible":true},
+    {"order_id":"TN-002","channel":"tokopedia","delivery_date":"2026-01-05","cancel_date":null,"list_idr":200000,"seller_discount_idr":20000,"delivery_sales_idr":180000,"refund_effective_date":null,"refund_idr":0,"fee_idr":9000,"expected_receivable_idr":171000,"actual_settlement_idr":171000,"aov_eligible":true},
+    {"order_id":"TN-003","channel":"whatsapp","delivery_date":"2026-01-06","cancel_date":null,"list_idr":150000,"seller_discount_idr":0,"delivery_sales_idr":150000,"refund_effective_date":null,"refund_idr":0,"fee_idr":0,"expected_receivable_idr":150000,"actual_settlement_idr":150000,"aov_eligible":true},
+    {"order_id":"TN-004","channel":"pos","delivery_date":"2026-01-07","cancel_date":null,"list_idr":80000,"seller_discount_idr":0,"delivery_sales_idr":80000,"refund_effective_date":null,"refund_idr":0,"fee_idr":0,"expected_receivable_idr":80000,"actual_settlement_idr":80000,"aov_eligible":true},
+    {"order_id":"TN-005","channel":"shopee","delivery_date":"2026-01-08","cancel_date":null,"list_idr":120000,"seller_discount_idr":0,"delivery_sales_idr":120000,"refund_effective_date":"2026-01-15","refund_idr":30000,"fee_idr":6000,"expected_receivable_idr":84000,"actual_settlement_idr":84000,"aov_eligible":true},
+    {"order_id":"TN-006","channel":"tokopedia","delivery_date":"2026-01-20","cancel_date":null,"list_idr":250000,"seller_discount_idr":0,"delivery_sales_idr":250000,"refund_effective_date":"2026-02-03","refund_idr":250000,"fee_idr":12000,"expected_receivable_idr":-12000,"actual_settlement_idr":-12000,"aov_eligible":true},
+    {"order_id":"TN-007","channel":"shopee","delivery_date":null,"cancel_date":"2026-01-10","list_idr":70000,"seller_discount_idr":0,"delivery_sales_idr":0,"refund_effective_date":null,"refund_idr":0,"fee_idr":0,"expected_receivable_idr":0,"actual_settlement_idr":0,"aov_eligible":false},
+    {"order_id":"TN-008","channel":"shopee","delivery_date":"2026-01-11","cancel_date":null,"list_idr":90000,"seller_discount_idr":0,"delivery_sales_idr":90000,"refund_effective_date":null,"refund_idr":0,"fee_idr":4000,"expected_receivable_idr":86000,"actual_settlement_idr":86000,"aov_eligible":true,"duplicate_observations":1},
+    {"order_id":"TN-009","channel":"tokopedia","delivery_date":"2026-01-12","cancel_date":null,"list_idr":110000,"seller_discount_idr":0,"delivery_sales_idr":110000,"refund_effective_date":null,"refund_idr":0,"fee_idr":5000,"expected_receivable_idr":105000,"actual_settlement_idr":105000,"aov_eligible":true,"settlement_date":"2026-02-10","settlement_status":"late_matched"},
+    {"order_id":"TN-010","channel":"whatsapp","delivery_date":"2026-01-13","cancel_date":null,"list_idr":120000,"seller_discount_idr":0,"delivery_sales_idr":120000,"refund_effective_date":null,"refund_idr":0,"fee_idr":6000,"expected_receivable_idr":114000,"actual_settlement_idr":112000,"aov_eligible":true,"settlement_status":"amount_mismatch"}
+  ],
+  "periods": {
+    "2026-01": {"delivery_sales_idr":1200000,"refunds_idr":30000,"net_sales_effect_idr":1170000,"fee_expense_idr":47000,"delivered_orders":9},
+    "2026-02": {"delivery_sales_idr":0,"refunds_idr":250000,"net_sales_effect_idr":-250000,"fee_expense_idr":0,"delivered_orders":0}
+  },
+  "lineage_expectations": {
+    "TN-005":["LIN-005A","LIN-005B"],
+    "TN-006":["LIN-006A","LIN-006B"],
+    "TN-007":["LIN-007A","LIN-007B"],
+    "TN-008":["LIN-008A","LIN-008B"],
+    "TN-010":["LIN-010A","LIN-010B","LIN-010C"]
+  },
+  "quarantine": [
+    {"lineage_id":"LIN-Q01","reason_code":"INVALID_DATE_AND_AMOUNT","raw_date":"2026-13-40","raw_amount":"Rp??","canonical_contribution_idr":0}
+  ],
+  "totals": {
+    "canonical_orders":10,
+    "delivered_orders":9,
+    "pre_delivery_cancelled_orders":1,
+    "source_list_idr":1290000,
+    "delivery_sales_idr":1200000,
+    "approved_refunds_idr":280000,
+    "lifetime_net_sales_idr":920000,
+    "fee_expense_idr":47000,
+    "expected_receivable_idr":873000,
+    "actual_settlement_idr":871000,
+    "settlement_variance_idr":-2000,
+    "aov_numerator_idr":920000,
+    "aov_denominator_orders":9,
+    "aov_whole_idr_half_up":102222,
+    "duplicate_observations":1,
+    "quarantined_rows":1
+  }
+}
