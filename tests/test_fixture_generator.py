@@ -5,6 +5,8 @@ from __future__ import annotations
 import csv
 import hashlib
 import json
+import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -81,6 +83,23 @@ class FixtureGeneratorBlackBoxTests(unittest.TestCase):
             self.assertEqual((one["physical_rows"], one["quarantined_rows"], one["duplicate_observations"]), (48, 1, 1))
             self.assertEqual((two["physical_rows"], two["quarantined_rows"], two["duplicate_observations"]), (48, 1, 1))
             self.assertEqual((first / "expected_results.json").read_bytes(), (second / "expected_results.json").read_bytes())
+
+    def test_package_runs_without_repository_test_files(self) -> None:
+        with tempfile.TemporaryDirectory() as package_temp, tempfile.TemporaryDirectory() as output_temp:
+            package_root = Path(package_temp)
+            shutil.copytree(ROOT / "fixture_generator", package_root / "fixture_generator")
+            environment = os.environ.copy()
+            environment["PYTHONPATH"] = str(package_root)
+            result = subprocess.run(
+                [sys.executable, "-m", "fixture_generator", "--output-dir", output_temp, "--fixture-version", "1.0.0", "--seed", "20260729"],
+                cwd=package_root,
+                env=environment,
+                text=True,
+                capture_output=True,
+                check=False,
+            )
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertEqual(json.loads((Path(output_temp) / "expected_results.json").read_text()), EXPECTED)
 
     def test_physical_counts_include_duplicate_and_quarantine_for_every_format(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:

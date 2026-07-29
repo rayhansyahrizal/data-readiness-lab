@@ -118,7 +118,7 @@ def generate_fixture_pack(output_dir: Path, fixture_version: str, seed: int) -> 
         "settlements.csv": (_csv_bytes(["settlement_id", "order_id", "collection_idr", "refund_or_reversal_idr", "fee_idr", "actual_bank_idr", "settlement_date", "status", "lineage_id"], SETTLEMENTS), 10, 10, 0),
         "products.xlsx": (_xlsx_bytes(product_rows), 10, 10, 0),
     }
-    expected_source = Path(__file__).resolve().parents[1] / "tests" / "fixtures" / "expected_results.json"
+    expected_source = Path(__file__).with_name("expected_results.json")
     expected = json.loads(expected_source.read_text(encoding="utf-8"))
     expected_bytes = (json.dumps(expected, indent=2, ensure_ascii=False) + "\n").encode("utf-8")
     (output_dir / "expected_results.json").write_bytes(expected_bytes)
