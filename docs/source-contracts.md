@@ -38,4 +38,6 @@ Lower precedence may fill nulls but cannot overwrite authoritative values. Equal
 
 ## Ingestion gates
 
-For every file, `accepted + quarantined = physical rows`. Unknown enums and corrupt rows remain visible with stable reason codes. Duplicate evidence retains all lineage while contributing one logical observation. Schema drift, invalid IDR, ambiguous timezone, broken required relationships, or manifest/hash mismatch blocks publication eligibility.
+For every file, `accepted + duplicate_suppressed + quarantined = physical rows`. Unknown enums and corrupt rows remain visible with stable reason codes. Duplicate evidence retains all lineage while contributing one logical observation. Schema drift, invalid IDR, ambiguous timezone, broken required relationships, or manifest/hash mismatch blocks publication eligibility.
+
+The v1 CSV reader intentionally treats each physical line as one record; multiline quoted CSV fields are not supported.

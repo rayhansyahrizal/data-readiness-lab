@@ -19,6 +19,7 @@ from xml.etree import ElementTree as ET
 ARTIFACTS = {"orders.csv", "events.jsonl", "settlements.csv", "products.xlsx", "expected_results.json", "manifest.json"}
 BUSINESS = {"orders.csv", "events.jsonl", "settlements.csv", "products.xlsx"}
 NS = "{http://schemas.openxmlformats.org/spreadsheetml/2006/main}"
+XLSX_MAX_UNCOMPRESSED = 20_000_000
 
 
 class IngestionError(ValueError):
@@ -68,6 +69,16 @@ def load_pack(directory: Path) -> tuple[dict, dict[str, bytes]]:
     for item in declarations:
         if not isinstance(item, dict) or not isinstance(item.get("sha256"), str) or sha(payloads[item["path"]]) != item["sha256"]:
             raise IngestionError(f"hash mismatch for {item.get('path') if isinstance(item, dict) else '?'}")
+    try:
+        from fixture_generator.generator import SUPPORTED_VERSION, _build_pack
+        if manifest.get("fixture_version") != SUPPORTED_VERSION or type(manifest.get("seed")) is not int:
+            raise ValueError("unsupported fixture identity")
+        with tempfile.TemporaryDirectory() as temporary:
+            expected = _build_pack(Path(temporary), manifest["fixture_version"], manifest["seed"])
+    except (OSError, TypeError, ValueError) as error:
+        raise IngestionError("manifest fixture version and seed are invalid") from error
+    if manifest != expected:
+        raise IngestionError("manifest does not exactly match deterministic fixture semantics")
     return manifest, payloads
 
 
@@ -103,7 +114,8 @@ def xlsx_records(data: bytes) -> list[tuple[bytes, dict[str, str]]]:
     try:
         with zipfile.ZipFile(io.BytesIO(data)) as archive:
             infos = archive.infolist()
-            if len(infos) > 100 or any(i.flag_bits & 1 or i.file_size > 10_000_000 or ".." in Path(i.filename).parts or i.filename.startswith("/") for i in infos):
+            if (len(infos) > 100 or sum(i.file_size for i in infos) > XLSX_MAX_UNCOMPRESSED or
+                    any(i.flag_bits & 1 or i.file_size > 10_000_000 or ".." in Path(i.filename).parts or i.filename.startswith("/") for i in infos)):
                 raise IngestionError("unsafe XLSX archive")
             xml = archive.read("xl/worksheets/sheet1.xml")
     except (zipfile.BadZipFile, KeyError, OSError) as error:
@@ -177,7 +189,45 @@ def schema(connection: sqlite3.Connection) -> None:
     CREATE TABLE batches(batch_id TEXT PRIMARY KEY, ingested_at TEXT NOT NULL, manifest_sha256 TEXT NOT NULL, physical_rows INTEGER NOT NULL, accepted INTEGER NOT NULL, duplicate_suppressed INTEGER NOT NULL, quarantined INTEGER NOT NULL);
     CREATE TABLE artifacts(source_path TEXT PRIMARY KEY, file_sha256 TEXT NOT NULL, byte_size INTEGER NOT NULL, object_path TEXT NOT NULL UNIQUE);
     CREATE TABLE evidence(evidence_id TEXT PRIMARY KEY, batch_id TEXT NOT NULL REFERENCES batches(batch_id), source_path TEXT NOT NULL REFERENCES artifacts(source_path), file_sha256 TEXT NOT NULL, physical_row_locator TEXT NOT NULL, raw_payload BLOB NOT NULL, payload_hash TEXT NOT NULL, source_system TEXT NOT NULL, record_type TEXT NOT NULL, source_record_id TEXT, source_updated_at TEXT, native_lineage_id TEXT, classification TEXT NOT NULL CHECK(classification IN ('accepted','duplicate_suppressed','quarantined')), reason_code TEXT, duplicate_of_locator TEXT, UNIQUE(batch_id,source_path,physical_row_locator));
+    PRAGMA user_version=1;
     """)
+
+
+def authenticate_store(output_dir: Path, input_dir: Path, batch_id: str) -> None:
+    """Compare every path, byte export, schema, and logical row to reconstruction."""
+    try:
+        top = list(output_dir.iterdir())
+        if {p.name for p in top} != {"objects", "metadata.sqlite", "audit.json", "evidence.jsonl"} or any(p.is_symlink() for p in top):
+            raise IngestionError("store tree is not exact")
+        audit = json.loads((output_dir / "audit.json").read_bytes())
+        stored_at = validate_time(audit["ingested_at"])
+        with tempfile.TemporaryDirectory(dir=output_dir.parent) as temporary:
+            expected = Path(temporary) / "expected"
+            if ingest(input_dir, expected, stored_at)["batch_id"] != batch_id:
+                raise IngestionError("stored batch differs")
+            def tree(root: Path):
+                return [(str(p.relative_to(root)), "link" if p.is_symlink() else "dir" if p.is_dir() else "file") for p in sorted(root.rglob("*"))]
+            if tree(output_dir) != tree(expected):
+                raise IngestionError("store tree differs")
+            for relative in ("audit.json", "evidence.jsonl"):
+                if (output_dir / relative).read_bytes() != (expected / relative).read_bytes():
+                    raise IngestionError("deterministic export differs")
+            for obj in (expected / "objects").iterdir():
+                actual = output_dir / "objects" / obj.name
+                if not stat.S_ISREG(actual.lstat().st_mode) or sha(actual.read_bytes()) != obj.name or actual.read_bytes() != obj.read_bytes():
+                    raise IngestionError("content object differs")
+            dumps = []
+            for path in (output_dir / "metadata.sqlite", expected / "metadata.sqlite"):
+                if not stat.S_ISREG(path.lstat().st_mode):
+                    raise IngestionError("metadata is not regular")
+                with sqlite3.connect(f"file:{path}?mode=ro", uri=True) as db:
+                    if db.execute("pragma integrity_check").fetchone() != ("ok",) or db.execute("pragma foreign_key_check").fetchall() or db.execute("pragma user_version").fetchone() != (1,):
+                        raise IngestionError("metadata checks failed")
+                    dumps.append(list(db.iterdump()))
+            if dumps[0] != dumps[1]:
+                raise IngestionError("metadata schema or logical rows differ")
+    except (OSError, KeyError, TypeError, json.JSONDecodeError, sqlite3.Error) as error:
+        raise IngestionError("stored batch cannot be authenticated") from error
 
 
 def ingest(input_dir: Path, output_dir: Path, ingested_at: str) -> dict:
@@ -190,20 +240,10 @@ def ingest(input_dir: Path, output_dir: Path, ingested_at: str) -> dict:
         raise IngestionError("output-dir must be a real directory")
     if output_dir.exists():
         try:
-            audit = json.loads((output_dir / "audit.json").read_text())
-            with sqlite3.connect(output_dir / "metadata.sqlite") as db:
-                count = db.execute("select count(*) from evidence where batch_id=?", (batch_id,)).fetchone()[0]
-                stored_artifacts = db.execute("select source_path,file_sha256,object_path from artifacts").fetchall()
-            copies_intact = len(stored_artifacts) == len(ARTIFACTS) and all(
-                path in payloads and digest == sha(payloads[path]) and
-                sha((output_dir / object_path).read_bytes()) == digest
-                for path, digest, object_path in stored_artifacts
-            )
-            if audit.get("batch_id") == batch_id and count == len(evidence) and copies_intact:
-                return {"batch_id": batch_id, "evidence_added": 0, "status": "replayed"}
-        except (OSError, json.JSONDecodeError, sqlite3.Error):
-            pass
-        raise IngestionError("output store already contains a different or corrupt batch")
+            authenticate_store(output_dir, input_dir, batch_id)
+            return {"batch_id": batch_id, "evidence_added": 0, "status": "replayed"}
+        except IngestionError as error:
+            raise IngestionError("output store already contains a different or corrupt batch") from error
     output_dir.parent.mkdir(parents=True, exist_ok=True)
     staging = Path(tempfile.mkdtemp(prefix=f".{output_dir.name}.staging-", dir=output_dir.parent))
     try:

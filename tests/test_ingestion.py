@@ -98,6 +98,51 @@ class IngestionBlackBoxTests(unittest.TestCase):
             before = self.snapshot(store); rejected = self.command(second, store)
             self.assertNotEqual(rejected.returncode, 0); self.assertEqual(self.snapshot(store), before)
 
+    def test_manifest_semantic_forgery_is_rejected_unchanged(self):
+        fields = [
+            lambda m: m.__setitem__("accepted_rows", m["accepted_rows"] + 1),
+            lambda m: m["files"][0].__setitem__("accepted_rows", 10),
+            lambda m: m["quarantine"][0].__setitem__("source_file_sha256", "0" * 64),
+            lambda m: m["quarantine"][0].__setitem__("lineage_id", "FORGED"),
+            lambda m: m["quarantine"][0].__setitem__("reason_code", "FORGED"),
+        ]
+        for mutate in fields:
+            with self.subTest(mutate=mutate), tempfile.TemporaryDirectory() as td:
+                root = Path(td); pack = self.fixture(root); store = root / "store"
+                self.assertEqual(self.command(pack, store).returncode, 0); before = self.snapshot(store)
+                manifest = json.loads((pack / "manifest.json").read_text()); mutate(manifest)
+                (pack / "manifest.json").write_text(json.dumps(manifest))
+                rejected = self.command(pack, store)
+                self.assertNotEqual(rejected.returncode, 0); self.assertEqual(self.snapshot(store), before)
+
+    def test_adversarial_store_forgery_replay_is_rejected_unchanged(self):
+        def db(sql):
+            def mutation(store):
+                con = sqlite3.connect(store / "metadata.sqlite"); con.execute(sql); con.commit(); con.close()
+            return mutation
+        mutations = [
+            lambda s: (s / "audit.json").write_text('{}'),
+            lambda s: (s / "evidence.jsonl").write_bytes((s / "evidence.jsonl").read_bytes() + b'{}\n'),
+            db("update evidence set raw_payload=x'00' where rowid=1"),
+            db("update evidence set payload_hash='forged' where rowid=1"),
+            db("update evidence set classification='quarantined',reason_code='x' where rowid=1"),
+            db("update batches set accepted=0"),
+            db("pragma user_version=2"),
+            lambda s: (s / "extra").write_text("x"),
+            self.symlink_object,
+        ]
+        for mutate in mutations:
+            with self.subTest(mutate=mutate), tempfile.TemporaryDirectory() as td:
+                root = Path(td); pack = self.fixture(root); store = root / "store"
+                self.assertEqual(self.command(pack, store).returncode, 0); mutate(store); before = self.snapshot(store)
+                rejected = self.command(pack, store)
+                self.assertNotEqual(rejected.returncode, 0); self.assertEqual(self.snapshot(store), before)
+
+    @staticmethod
+    def symlink_object(store):
+        obj = next((store / "objects").iterdir()); data = obj.read_bytes(); target = store / "target"
+        target.write_bytes(data); obj.unlink(); obj.symlink_to(target)
+
     @staticmethod
     def tamper_hash(pack):
         path = pack / "manifest.json"; obj = json.loads(path.read_text()); obj["files"][0]["sha256"] = "0" * 64; path.write_text(json.dumps(obj))
