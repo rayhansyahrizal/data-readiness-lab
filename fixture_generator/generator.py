@@ -13,6 +13,10 @@ from typing import Sequence
 from xml.sax.saxutils import escape
 
 SUPPORTED_VERSION = "1.0.0"
+ARTIFACT_NAMES = frozenset({
+    "orders.csv", "events.jsonl", "settlements.csv", "products.xlsx",
+    "expected_results.json", "manifest.json",
+})
 
 ORDERS = [
     ("TN-001", "Shopee", "03/01/2026", "100000", "0", "LIN-001A"),
@@ -100,6 +104,21 @@ def generate_fixture_pack(output_dir: Path, fixture_version: str, seed: int) -> 
     if fixture_version != SUPPORTED_VERSION:
         raise ValueError(f"unsupported fixture version {fixture_version!r}; expected {SUPPORTED_VERSION}")
     output_dir = Path(output_dir)
+    if output_dir.exists() and any(output_dir.iterdir()):
+        present = {path.name for path in output_dir.iterdir()}
+        manifest_path = output_dir / "manifest.json"
+        if present != ARTIFACT_NAMES or not manifest_path.is_file():
+            raise FileExistsError(
+                f"output directory {output_dir} is not an exact fixture pack; refusing to retain or overwrite files"
+            )
+        try:
+            prior = json.loads(manifest_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as error:
+            raise FileExistsError(f"output directory {output_dir} has an invalid fixture manifest") from error
+        if prior.get("fixture_version") != fixture_version or prior.get("seed") != seed:
+            raise FileExistsError(
+                f"output directory {output_dir} contains a different fixture version or seed"
+            )
     output_dir.mkdir(parents=True, exist_ok=True)
     rng = random.Random(seed)
     customers = [f"CUST-{rng.randrange(100000, 999999)}" for _ in ORDERS]
@@ -138,6 +157,13 @@ def generate_fixture_pack(output_dir: Path, fixture_version: str, seed: int) -> 
         "quarantined_rows": sum(item[3] for item in files.values()),
         "duplicate_observations": 1,
         "canonical_orders": 10,
+        "quarantine": [{
+            "source_file": "orders.csv",
+            "physical_row_number": 12,
+            "source_file_sha256": hashlib.sha256(files["orders.csv"][0]).hexdigest(),
+            "lineage_id": "LIN-Q01",
+            "reason_code": "INVALID_DATE_AND_AMOUNT",
+        }],
         "defect_classes": ["MIXED_DATE_FORMATS", "MIXED_CURRENCY_FORMATS", "INCONSISTENT_ENUM_CASE", "DUPLICATE_OBSERVATION", "PARTIAL_REFUND", "LATER_MONTH_FULL_REFUND", "PAID_CANCELLATION_REVERSAL", "LATE_SETTLEMENT", "SETTLEMENT_AMOUNT_MISMATCH", "MULTI_ROW_LINEAGE", "INVALID_DATE_AND_AMOUNT"],
         "answer_key": {"path": "expected_results.json", "sha256": hashlib.sha256(expected_bytes).hexdigest()},
     }

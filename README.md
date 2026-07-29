@@ -13,7 +13,9 @@ python3 -m fixture_generator \
   --seed 20260729
 ```
 
-The output contains messy CSV, JSONL, and XLSX sources, a literal answer key, and `manifest.json` with SHA-256 hashes and physical/accepted/quarantined row counts. Repeating the command with the same arguments is byte deterministic.
+Version `1.0.0` is deliberately an **exactly 10-order truth fixture**. The output contains messy CSV, JSONL, and XLSX sources, a literal answer key, and `manifest.json` with SHA-256 hashes and physical/accepted/quarantined row counts. Repeating the command with the same arguments is byte deterministic and may safely reuse the exact pack directory. A different seed/version, an incomplete pack, or unrelated files in that directory cause generation to fail before artifacts are changed.
+
+The planned 90-day expanded dataset—including header drift, orphan records, and batched file arrivals—is a later seam milestone. Those scale and ingestion cases are intentionally not part of `v1.0.0`.
 
 Run its black-box tests with:
 

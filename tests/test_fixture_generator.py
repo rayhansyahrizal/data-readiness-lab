@@ -48,7 +48,62 @@ class FixtureGeneratorBlackBoxTests(unittest.TestCase):
             self.assertEqual(answer["lineage_expectations"]["TN-010"], ["LIN-010A", "LIN-010B", "LIN-010C"])
             self.assertEqual(answer["quarantine"], [{"lineage_id": "LIN-Q01", "reason_code": "INVALID_DATE_AND_AMOUNT", "raw_date": "2026-13-40", "raw_amount": "Rp??", "canonical_contribution_idr": 0}])
             self.assertEqual(answer["totals"]["settlement_variance_idr"], -2000)
+            self.assertEqual(answer["daily_event_movements"], [
+                {"effective_date": "2026-01-03", "delivery_sales_idr": 100000, "refunds_idr": 0},
+                {"effective_date": "2026-01-05", "delivery_sales_idr": 180000, "refunds_idr": 0},
+                {"effective_date": "2026-01-06", "delivery_sales_idr": 150000, "refunds_idr": 0},
+                {"effective_date": "2026-01-07", "delivery_sales_idr": 80000, "refunds_idr": 0},
+                {"effective_date": "2026-01-08", "delivery_sales_idr": 120000, "refunds_idr": 0},
+                {"effective_date": "2026-01-09", "delivery_sales_idr": 0, "refunds_idr": 0},
+                {"effective_date": "2026-01-10", "delivery_sales_idr": 0, "refunds_idr": 0},
+                {"effective_date": "2026-01-11", "delivery_sales_idr": 90000, "refunds_idr": 0},
+                {"effective_date": "2026-01-12", "delivery_sales_idr": 110000, "refunds_idr": 0},
+                {"effective_date": "2026-01-13", "delivery_sales_idr": 120000, "refunds_idr": 0},
+                {"effective_date": "2026-01-15", "delivery_sales_idr": 0, "refunds_idr": 30000},
+                {"effective_date": "2026-01-20", "delivery_sales_idr": 250000, "refunds_idr": 0},
+                {"effective_date": "2026-02-03", "delivery_sales_idr": 0, "refunds_idr": 250000},
+            ])
+            self.assertEqual(len(answer["event_expectations"]), 16)
+            self.assertEqual(len(answer["settlement_expectations"]), 10)
+            settlement_arithmetic = [
+                (row["order_id"], row["collection_idr"], row["refund_or_reversal_idr"], row["fee_idr"], row["actual_bank_idr"])
+                for row in answer["settlement_expectations"]
+            ]
+            self.assertEqual(settlement_arithmetic, [
+                ("TN-001", 100000, 0, -5000, 95000),
+                ("TN-002", 180000, 0, -9000, 171000),
+                ("TN-003", 150000, 0, 0, 150000),
+                ("TN-004", 80000, 0, 0, 80000),
+                ("TN-005", 120000, -30000, -6000, 84000),
+                ("TN-006", 250000, -250000, -12000, -12000),
+                ("TN-007", 70000, -70000, 0, 0),
+                ("TN-008", 90000, 0, -4000, 86000),
+                ("TN-009", 110000, 0, -5000, 105000),
+                ("TN-010", 120000, 0, -6000, 112000),
+            ])
+            self.assertEqual(answer["lineage_expectations"], {
+                "TN-001": ["LIN-001A", "LIN-001B", "LIN-001C"],
+                "TN-002": ["LIN-002A", "LIN-002B", "LIN-002C"],
+                "TN-003": ["LIN-003A", "LIN-003B", "LIN-003C"],
+                "TN-004": ["LIN-004A", "LIN-004B", "LIN-004C"],
+                "TN-005": ["LIN-005A", "LIN-005B", "LIN-005C", "LIN-005D"],
+                "TN-006": ["LIN-006A", "LIN-006B", "LIN-006C", "LIN-006D"],
+                "TN-007": ["LIN-007A", "LIN-007B", "LIN-007C", "LIN-007D", "LIN-007E", "LIN-007F", "LIN-007G"],
+                "TN-008": ["LIN-008A", "LIN-008B", "LIN-008C"],
+                "TN-009": ["LIN-009A", "LIN-009B", "LIN-009C"],
+                "TN-010": ["LIN-010A", "LIN-010B", "LIN-010C"],
+            })
             events = [json.loads(line) for line in (output / "events.jsonl").read_text().splitlines()]
+            self.assertEqual(events, answer["event_expectations"])
+            self.assertEqual(
+                [(row["event_id"], row["amount_idr"]) for row in answer["event_expectations"]],
+                [("EV-001-D", ""), ("EV-002-D", ""), ("EV-003-D", ""),
+                 ("EV-004-D", ""), ("EV-005-D", ""), ("EV-005-R", "30000"),
+                 ("EV-006-D", ""), ("EV-006-R", "250000"), ("EV-007-P", "70000"),
+                 ("EV-007-C1", ""), ("EV-007-CR", ""), ("EV-007-C2", ""),
+                 ("EV-007-PR", "-70000"), ("EV-008-D", ""), ("EV-009-D", ""),
+                 ("EV-010-D", "")],
+            )
             tn7 = [event["event_type"] for event in events if event["order_id"] == "TN-007"]
             self.assertEqual(tn7, ["payment_captured", "cancelled", "cancellation_reversed", "cancelled", "payment_reversed"])
             late_refund = next(event for event in events if event["event_id"] == "EV-006-R")
@@ -73,8 +128,8 @@ class FixtureGeneratorBlackBoxTests(unittest.TestCase):
     def test_different_seed_changes_business_attributes_but_preserves_defects(self) -> None:
         with tempfile.TemporaryDirectory() as first_temp, tempfile.TemporaryDirectory() as second_temp:
             first, second = Path(first_temp), Path(second_temp)
-            self.generate(first, 1)
-            self.generate(second, 2)
+            self.assertEqual(self.generate(first, 1).returncode, 0)
+            self.assertEqual(self.generate(second, 2).returncode, 0)
             self.assertNotEqual((first / "orders.csv").read_bytes(), (second / "orders.csv").read_bytes())
             self.assertNotEqual((first / "products.xlsx").read_bytes(), (second / "products.xlsx").read_bytes())
             one = json.loads((first / "manifest.json").read_text())
@@ -104,7 +159,8 @@ class FixtureGeneratorBlackBoxTests(unittest.TestCase):
     def test_physical_counts_include_duplicate_and_quarantine_for_every_format(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             output = Path(temporary)
-            self.generate(output)
+            result = self.generate(output)
+            self.assertEqual(result.returncode, 0, result.stderr)
             manifest = json.loads((output / "manifest.json").read_text())
             counts = {item["path"]: item for item in manifest["files"]}
             with (output / "orders.csv").open(newline="") as source:
@@ -123,6 +179,42 @@ class FixtureGeneratorBlackBoxTests(unittest.TestCase):
             for item in counts.values():
                 self.assertEqual(item["accepted_rows"] + item["quarantined_rows"], item["physical_rows"])
             self.assertEqual(manifest["accepted_rows"] + manifest["quarantined_rows"], manifest["physical_rows"])
+
+    def test_manifest_quarantine_identifies_the_physical_source_record(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "new" / "pack"
+            result = self.generate(output)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            manifest = json.loads((output / "manifest.json").read_text())
+            record = manifest["quarantine"][0]
+            self.assertEqual(record["source_file"], "orders.csv")
+            self.assertEqual(record["physical_row_number"], 12)
+            self.assertEqual(record["lineage_id"], "LIN-Q01")
+            self.assertEqual(record["reason_code"], "INVALID_DATE_AND_AMOUNT")
+            self.assertEqual(record["source_file_sha256"], hashlib.sha256((output / "orders.csv").read_bytes()).hexdigest())
+
+    def test_existing_pack_safety_is_idempotent_and_non_destructive(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary) / "pack"
+            first = self.generate(output, 1)
+            self.assertEqual(first.returncode, 0, first.stderr)
+            before = {path.name: path.read_bytes() for path in output.iterdir()}
+            repeat = self.generate(output, 1)
+            self.assertEqual(repeat.returncode, 0, repeat.stderr)
+            self.assertEqual({path.name: path.read_bytes() for path in output.iterdir()}, before)
+            rejected = self.generate(output, 2)
+            self.assertNotEqual(rejected.returncode, 0)
+            self.assertEqual({path.name: path.read_bytes() for path in output.iterdir()}, before)
+
+    def test_unrelated_stale_file_is_rejected_without_modification(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            output = Path(temporary)
+            stale = output / "keep-me.txt"
+            stale.write_bytes(b"untouched")
+            result = self.generate(output)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertEqual(stale.read_bytes(), b"untouched")
+            self.assertEqual(list(output.iterdir()), [stale])
 
 
 if __name__ == "__main__":

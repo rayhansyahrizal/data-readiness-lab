@@ -4,47 +4,585 @@
   "currency": "IDR",
   "recognition_point": "delivery",
   "orders": [
-    {"order_id":"TN-001","channel":"shopee","delivery_date":"2026-01-03","cancel_date":null,"list_idr":100000,"seller_discount_idr":0,"delivery_sales_idr":100000,"refund_effective_date":null,"refund_idr":0,"fee_idr":5000,"expected_receivable_idr":95000,"actual_settlement_idr":95000,"aov_eligible":true},
-    {"order_id":"TN-002","channel":"tokopedia","delivery_date":"2026-01-05","cancel_date":null,"list_idr":200000,"seller_discount_idr":20000,"delivery_sales_idr":180000,"refund_effective_date":null,"refund_idr":0,"fee_idr":9000,"expected_receivable_idr":171000,"actual_settlement_idr":171000,"aov_eligible":true},
-    {"order_id":"TN-003","channel":"whatsapp","delivery_date":"2026-01-06","cancel_date":null,"list_idr":150000,"seller_discount_idr":0,"delivery_sales_idr":150000,"refund_effective_date":null,"refund_idr":0,"fee_idr":0,"expected_receivable_idr":150000,"actual_settlement_idr":150000,"aov_eligible":true},
-    {"order_id":"TN-004","channel":"pos","delivery_date":"2026-01-07","cancel_date":null,"list_idr":80000,"seller_discount_idr":0,"delivery_sales_idr":80000,"refund_effective_date":null,"refund_idr":0,"fee_idr":0,"expected_receivable_idr":80000,"actual_settlement_idr":80000,"aov_eligible":true},
-    {"order_id":"TN-005","channel":"shopee","delivery_date":"2026-01-08","cancel_date":null,"list_idr":120000,"seller_discount_idr":0,"delivery_sales_idr":120000,"refund_effective_date":"2026-01-15","refund_idr":30000,"fee_idr":6000,"expected_receivable_idr":84000,"actual_settlement_idr":84000,"aov_eligible":true},
-    {"order_id":"TN-006","channel":"tokopedia","delivery_date":"2026-01-20","cancel_date":null,"list_idr":250000,"seller_discount_idr":0,"delivery_sales_idr":250000,"refund_effective_date":"2026-02-03","refund_idr":250000,"fee_idr":12000,"expected_receivable_idr":-12000,"actual_settlement_idr":-12000,"aov_eligible":true},
-    {"order_id":"TN-007","channel":"shopee","delivery_date":null,"cancel_date":"2026-01-10","list_idr":70000,"seller_discount_idr":0,"delivery_sales_idr":0,"refund_effective_date":null,"refund_idr":0,"fee_idr":0,"expected_receivable_idr":0,"actual_settlement_idr":0,"aov_eligible":false},
-    {"order_id":"TN-008","channel":"shopee","delivery_date":"2026-01-11","cancel_date":null,"list_idr":90000,"seller_discount_idr":0,"delivery_sales_idr":90000,"refund_effective_date":null,"refund_idr":0,"fee_idr":4000,"expected_receivable_idr":86000,"actual_settlement_idr":86000,"aov_eligible":true,"duplicate_observations":1},
-    {"order_id":"TN-009","channel":"tokopedia","delivery_date":"2026-01-12","cancel_date":null,"list_idr":110000,"seller_discount_idr":0,"delivery_sales_idr":110000,"refund_effective_date":null,"refund_idr":0,"fee_idr":5000,"expected_receivable_idr":105000,"actual_settlement_idr":105000,"aov_eligible":true,"settlement_date":"2026-02-10","settlement_status":"late_matched"},
-    {"order_id":"TN-010","channel":"whatsapp","delivery_date":"2026-01-13","cancel_date":null,"list_idr":120000,"seller_discount_idr":0,"delivery_sales_idr":120000,"refund_effective_date":null,"refund_idr":0,"fee_idr":6000,"expected_receivable_idr":114000,"actual_settlement_idr":112000,"aov_eligible":true,"settlement_status":"amount_mismatch"}
+    {
+      "order_id": "TN-001",
+      "channel": "shopee",
+      "delivery_date": "2026-01-03",
+      "cancel_date": null,
+      "list_idr": 100000,
+      "seller_discount_idr": 0,
+      "delivery_sales_idr": 100000,
+      "refund_effective_date": null,
+      "refund_idr": 0,
+      "fee_idr": 5000,
+      "expected_receivable_idr": 95000,
+      "actual_settlement_idr": 95000,
+      "aov_eligible": true
+    },
+    {
+      "order_id": "TN-002",
+      "channel": "tokopedia",
+      "delivery_date": "2026-01-05",
+      "cancel_date": null,
+      "list_idr": 200000,
+      "seller_discount_idr": 20000,
+      "delivery_sales_idr": 180000,
+      "refund_effective_date": null,
+      "refund_idr": 0,
+      "fee_idr": 9000,
+      "expected_receivable_idr": 171000,
+      "actual_settlement_idr": 171000,
+      "aov_eligible": true
+    },
+    {
+      "order_id": "TN-003",
+      "channel": "whatsapp",
+      "delivery_date": "2026-01-06",
+      "cancel_date": null,
+      "list_idr": 150000,
+      "seller_discount_idr": 0,
+      "delivery_sales_idr": 150000,
+      "refund_effective_date": null,
+      "refund_idr": 0,
+      "fee_idr": 0,
+      "expected_receivable_idr": 150000,
+      "actual_settlement_idr": 150000,
+      "aov_eligible": true
+    },
+    {
+      "order_id": "TN-004",
+      "channel": "pos",
+      "delivery_date": "2026-01-07",
+      "cancel_date": null,
+      "list_idr": 80000,
+      "seller_discount_idr": 0,
+      "delivery_sales_idr": 80000,
+      "refund_effective_date": null,
+      "refund_idr": 0,
+      "fee_idr": 0,
+      "expected_receivable_idr": 80000,
+      "actual_settlement_idr": 80000,
+      "aov_eligible": true
+    },
+    {
+      "order_id": "TN-005",
+      "channel": "shopee",
+      "delivery_date": "2026-01-08",
+      "cancel_date": null,
+      "list_idr": 120000,
+      "seller_discount_idr": 0,
+      "delivery_sales_idr": 120000,
+      "refund_effective_date": "2026-01-15",
+      "refund_idr": 30000,
+      "fee_idr": 6000,
+      "expected_receivable_idr": 84000,
+      "actual_settlement_idr": 84000,
+      "aov_eligible": true
+    },
+    {
+      "order_id": "TN-006",
+      "channel": "tokopedia",
+      "delivery_date": "2026-01-20",
+      "cancel_date": null,
+      "list_idr": 250000,
+      "seller_discount_idr": 0,
+      "delivery_sales_idr": 250000,
+      "refund_effective_date": "2026-02-03",
+      "refund_idr": 250000,
+      "fee_idr": 12000,
+      "expected_receivable_idr": -12000,
+      "actual_settlement_idr": -12000,
+      "aov_eligible": true
+    },
+    {
+      "order_id": "TN-007",
+      "channel": "shopee",
+      "delivery_date": null,
+      "cancel_date": "2026-01-10",
+      "list_idr": 70000,
+      "seller_discount_idr": 0,
+      "delivery_sales_idr": 0,
+      "refund_effective_date": null,
+      "refund_idr": 0,
+      "fee_idr": 0,
+      "expected_receivable_idr": 0,
+      "actual_settlement_idr": 0,
+      "aov_eligible": false
+    },
+    {
+      "order_id": "TN-008",
+      "channel": "shopee",
+      "delivery_date": "2026-01-11",
+      "cancel_date": null,
+      "list_idr": 90000,
+      "seller_discount_idr": 0,
+      "delivery_sales_idr": 90000,
+      "refund_effective_date": null,
+      "refund_idr": 0,
+      "fee_idr": 4000,
+      "expected_receivable_idr": 86000,
+      "actual_settlement_idr": 86000,
+      "aov_eligible": true,
+      "duplicate_observations": 1
+    },
+    {
+      "order_id": "TN-009",
+      "channel": "tokopedia",
+      "delivery_date": "2026-01-12",
+      "cancel_date": null,
+      "list_idr": 110000,
+      "seller_discount_idr": 0,
+      "delivery_sales_idr": 110000,
+      "refund_effective_date": null,
+      "refund_idr": 0,
+      "fee_idr": 5000,
+      "expected_receivable_idr": 105000,
+      "actual_settlement_idr": 105000,
+      "aov_eligible": true,
+      "settlement_date": "2026-02-10",
+      "settlement_status": "late_matched"
+    },
+    {
+      "order_id": "TN-010",
+      "channel": "whatsapp",
+      "delivery_date": "2026-01-13",
+      "cancel_date": null,
+      "list_idr": 120000,
+      "seller_discount_idr": 0,
+      "delivery_sales_idr": 120000,
+      "refund_effective_date": null,
+      "refund_idr": 0,
+      "fee_idr": 6000,
+      "expected_receivable_idr": 114000,
+      "actual_settlement_idr": 112000,
+      "aov_eligible": true,
+      "settlement_status": "amount_mismatch"
+    }
   ],
   "periods": {
-    "2026-01": {"delivery_sales_idr":1200000,"refunds_idr":30000,"net_sales_effect_idr":1170000,"fee_expense_idr":47000,"delivered_orders":9},
-    "2026-02": {"delivery_sales_idr":0,"refunds_idr":250000,"net_sales_effect_idr":-250000,"fee_expense_idr":0,"delivered_orders":0}
+    "2026-01": {
+      "delivery_sales_idr": 1200000,
+      "refunds_idr": 30000,
+      "net_sales_effect_idr": 1170000,
+      "fee_expense_idr": 47000,
+      "delivered_orders": 9
+    },
+    "2026-02": {
+      "delivery_sales_idr": 0,
+      "refunds_idr": 250000,
+      "net_sales_effect_idr": -250000,
+      "fee_expense_idr": 0,
+      "delivered_orders": 0
+    }
   },
   "lineage_expectations": {
-    "TN-005":["LIN-005A","LIN-005B"],
-    "TN-006":["LIN-006A","LIN-006B"],
-    "TN-007":["LIN-007A","LIN-007B"],
-    "TN-008":["LIN-008A","LIN-008B"],
-    "TN-010":["LIN-010A","LIN-010B","LIN-010C"]
+    "TN-001": [
+      "LIN-001A",
+      "LIN-001B",
+      "LIN-001C"
+    ],
+    "TN-002": [
+      "LIN-002A",
+      "LIN-002B",
+      "LIN-002C"
+    ],
+    "TN-003": [
+      "LIN-003A",
+      "LIN-003B",
+      "LIN-003C"
+    ],
+    "TN-004": [
+      "LIN-004A",
+      "LIN-004B",
+      "LIN-004C"
+    ],
+    "TN-005": [
+      "LIN-005A",
+      "LIN-005B",
+      "LIN-005C",
+      "LIN-005D"
+    ],
+    "TN-006": [
+      "LIN-006A",
+      "LIN-006B",
+      "LIN-006C",
+      "LIN-006D"
+    ],
+    "TN-007": [
+      "LIN-007A",
+      "LIN-007B",
+      "LIN-007C",
+      "LIN-007D",
+      "LIN-007E",
+      "LIN-007F",
+      "LIN-007G"
+    ],
+    "TN-008": [
+      "LIN-008A",
+      "LIN-008B",
+      "LIN-008C"
+    ],
+    "TN-009": [
+      "LIN-009A",
+      "LIN-009B",
+      "LIN-009C"
+    ],
+    "TN-010": [
+      "LIN-010A",
+      "LIN-010B",
+      "LIN-010C"
+    ]
   },
   "quarantine": [
-    {"lineage_id":"LIN-Q01","reason_code":"INVALID_DATE_AND_AMOUNT","raw_date":"2026-13-40","raw_amount":"Rp??","canonical_contribution_idr":0}
+    {
+      "lineage_id": "LIN-Q01",
+      "reason_code": "INVALID_DATE_AND_AMOUNT",
+      "raw_date": "2026-13-40",
+      "raw_amount": "Rp??",
+      "canonical_contribution_idr": 0
+    }
   ],
   "totals": {
-    "canonical_orders":10,
-    "delivered_orders":9,
-    "pre_delivery_cancelled_orders":1,
-    "source_list_idr":1290000,
-    "delivery_sales_idr":1200000,
-    "approved_refunds_idr":280000,
-    "lifetime_net_sales_idr":920000,
-    "fee_expense_idr":47000,
-    "expected_receivable_idr":873000,
-    "actual_settlement_idr":871000,
-    "settlement_variance_idr":-2000,
-    "aov_numerator_idr":920000,
-    "aov_denominator_orders":9,
-    "aov_whole_idr_half_up":102222,
-    "duplicate_observations":1,
-    "quarantined_rows":1
-  }
+    "canonical_orders": 10,
+    "delivered_orders": 9,
+    "pre_delivery_cancelled_orders": 1,
+    "source_list_idr": 1290000,
+    "delivery_sales_idr": 1200000,
+    "approved_refunds_idr": 280000,
+    "lifetime_net_sales_idr": 920000,
+    "fee_expense_idr": 47000,
+    "expected_receivable_idr": 873000,
+    "actual_settlement_idr": 871000,
+    "settlement_variance_idr": -2000,
+    "aov_numerator_idr": 920000,
+    "aov_denominator_orders": 9,
+    "aov_whole_idr_half_up": 102222,
+    "duplicate_observations": 1,
+    "quarantined_rows": 1
+  },
+  "event_expectations": [
+    {
+      "event_id": "EV-001-D",
+      "order_id": "TN-001",
+      "event_type": "delivered",
+      "effective_at": "2026-01-03T10:00:00+07:00",
+      "observed_at": "2026-01-03T03:05:00Z",
+      "lineage_id": "LIN-001B",
+      "amount_idr": ""
+    },
+    {
+      "event_id": "EV-002-D",
+      "order_id": "TN-002",
+      "event_type": "delivered",
+      "effective_at": "2026-01-05T11:00:00+07:00",
+      "observed_at": "2026-01-05T04:02:00Z",
+      "lineage_id": "LIN-002B",
+      "amount_idr": ""
+    },
+    {
+      "event_id": "EV-003-D",
+      "order_id": "TN-003",
+      "event_type": "delivered",
+      "effective_at": "2026-01-06T09:00:00+07:00",
+      "observed_at": "2026-01-06T02:10:00Z",
+      "lineage_id": "LIN-003B",
+      "amount_idr": ""
+    },
+    {
+      "event_id": "EV-004-D",
+      "order_id": "TN-004",
+      "event_type": "delivered",
+      "effective_at": "2026-01-07T15:00:00+07:00",
+      "observed_at": "2026-01-07T08:00:30Z",
+      "lineage_id": "LIN-004B",
+      "amount_idr": ""
+    },
+    {
+      "event_id": "EV-005-D",
+      "order_id": "TN-005",
+      "event_type": "delivered",
+      "effective_at": "2026-01-08T12:00:00+07:00",
+      "observed_at": "2026-01-08T05:01:00Z",
+      "lineage_id": "LIN-005B",
+      "amount_idr": ""
+    },
+    {
+      "event_id": "EV-005-R",
+      "order_id": "TN-005",
+      "event_type": "refund_approved",
+      "effective_at": "2026-01-15T14:00:00+07:00",
+      "observed_at": "2026-01-15T07:05:00Z",
+      "lineage_id": "LIN-005C",
+      "amount_idr": "30000"
+    },
+    {
+      "event_id": "EV-006-D",
+      "order_id": "TN-006",
+      "event_type": "delivered",
+      "effective_at": "2026-01-20T10:00:00+07:00",
+      "observed_at": "2026-01-20T03:01:00Z",
+      "lineage_id": "LIN-006B",
+      "amount_idr": ""
+    },
+    {
+      "event_id": "EV-006-R",
+      "order_id": "TN-006",
+      "event_type": "refund_approved",
+      "effective_at": "2026-02-03T09:00:00+07:00",
+      "observed_at": "2026-02-15T02:00:00Z",
+      "lineage_id": "LIN-006C",
+      "amount_idr": "250000"
+    },
+    {
+      "event_id": "EV-007-P",
+      "order_id": "TN-007",
+      "event_type": "payment_captured",
+      "effective_at": "2026-01-09T08:00:00+07:00",
+      "observed_at": "2026-01-09T01:01:00Z",
+      "lineage_id": "LIN-007B",
+      "amount_idr": "70000"
+    },
+    {
+      "event_id": "EV-007-C1",
+      "order_id": "TN-007",
+      "event_type": "cancelled",
+      "effective_at": "2026-01-09T09:00:00+07:00",
+      "observed_at": "2026-01-09T02:01:00Z",
+      "lineage_id": "LIN-007C",
+      "amount_idr": ""
+    },
+    {
+      "event_id": "EV-007-CR",
+      "order_id": "TN-007",
+      "event_type": "cancellation_reversed",
+      "effective_at": "2026-01-09T10:00:00+07:00",
+      "observed_at": "2026-01-09T03:01:00Z",
+      "lineage_id": "LIN-007D",
+      "amount_idr": ""
+    },
+    {
+      "event_id": "EV-007-C2",
+      "order_id": "TN-007",
+      "event_type": "cancelled",
+      "effective_at": "2026-01-10T10:00:00+07:00",
+      "observed_at": "2026-01-10T03:01:00Z",
+      "lineage_id": "LIN-007E",
+      "amount_idr": ""
+    },
+    {
+      "event_id": "EV-007-PR",
+      "order_id": "TN-007",
+      "event_type": "payment_reversed",
+      "effective_at": "2026-01-10T11:00:00+07:00",
+      "observed_at": "2026-01-10T04:01:00Z",
+      "lineage_id": "LIN-007F",
+      "amount_idr": "-70000"
+    },
+    {
+      "event_id": "EV-008-D",
+      "order_id": "TN-008",
+      "event_type": "delivered",
+      "effective_at": "2026-01-11T10:00:00+07:00",
+      "observed_at": "2026-01-11T03:01:00Z",
+      "lineage_id": "LIN-008B",
+      "amount_idr": ""
+    },
+    {
+      "event_id": "EV-009-D",
+      "order_id": "TN-009",
+      "event_type": "delivered",
+      "effective_at": "2026-01-12T10:00:00+07:00",
+      "observed_at": "2026-01-12T03:01:00Z",
+      "lineage_id": "LIN-009B",
+      "amount_idr": ""
+    },
+    {
+      "event_id": "EV-010-D",
+      "order_id": "TN-010",
+      "event_type": "delivered",
+      "effective_at": "2026-01-13T10:00:00+07:00",
+      "observed_at": "2026-01-13T03:01:00Z",
+      "lineage_id": "LIN-010B",
+      "amount_idr": ""
+    }
+  ],
+  "settlement_expectations": [
+    {
+      "settlement_id": "ST-001",
+      "order_id": "TN-001",
+      "collection_idr": 100000,
+      "refund_or_reversal_idr": 0,
+      "fee_idr": -5000,
+      "actual_bank_idr": 95000,
+      "settlement_date": "2026-01-05",
+      "status": "matched",
+      "lineage_id": "LIN-001C"
+    },
+    {
+      "settlement_id": "ST-002",
+      "order_id": "TN-002",
+      "collection_idr": 180000,
+      "refund_or_reversal_idr": 0,
+      "fee_idr": -9000,
+      "actual_bank_idr": 171000,
+      "settlement_date": "2026-01-07",
+      "status": "matched",
+      "lineage_id": "LIN-002C"
+    },
+    {
+      "settlement_id": "ST-003",
+      "order_id": "TN-003",
+      "collection_idr": 150000,
+      "refund_or_reversal_idr": 0,
+      "fee_idr": 0,
+      "actual_bank_idr": 150000,
+      "settlement_date": "2026-01-06",
+      "status": "matched",
+      "lineage_id": "LIN-003C"
+    },
+    {
+      "settlement_id": "ST-004",
+      "order_id": "TN-004",
+      "collection_idr": 80000,
+      "refund_or_reversal_idr": 0,
+      "fee_idr": 0,
+      "actual_bank_idr": 80000,
+      "settlement_date": "2026-01-07",
+      "status": "matched",
+      "lineage_id": "LIN-004C"
+    },
+    {
+      "settlement_id": "ST-005",
+      "order_id": "TN-005",
+      "collection_idr": 120000,
+      "refund_or_reversal_idr": -30000,
+      "fee_idr": -6000,
+      "actual_bank_idr": 84000,
+      "settlement_date": "2026-01-17",
+      "status": "matched",
+      "lineage_id": "LIN-005D"
+    },
+    {
+      "settlement_id": "ST-006",
+      "order_id": "TN-006",
+      "collection_idr": 250000,
+      "refund_or_reversal_idr": -250000,
+      "fee_idr": -12000,
+      "actual_bank_idr": -12000,
+      "settlement_date": "2026-02-05",
+      "status": "matched",
+      "lineage_id": "LIN-006D"
+    },
+    {
+      "settlement_id": "ST-007",
+      "order_id": "TN-007",
+      "collection_idr": 70000,
+      "refund_or_reversal_idr": -70000,
+      "fee_idr": 0,
+      "actual_bank_idr": 0,
+      "settlement_date": "2026-01-11",
+      "status": "reversed",
+      "lineage_id": "LIN-007G"
+    },
+    {
+      "settlement_id": "ST-008",
+      "order_id": "TN-008",
+      "collection_idr": 90000,
+      "refund_or_reversal_idr": 0,
+      "fee_idr": -4000,
+      "actual_bank_idr": 86000,
+      "settlement_date": "2026-01-13",
+      "status": "matched",
+      "lineage_id": "LIN-008C"
+    },
+    {
+      "settlement_id": "ST-009",
+      "order_id": "TN-009",
+      "collection_idr": 110000,
+      "refund_or_reversal_idr": 0,
+      "fee_idr": -5000,
+      "actual_bank_idr": 105000,
+      "settlement_date": "2026-02-10",
+      "status": "late_matched",
+      "lineage_id": "LIN-009C"
+    },
+    {
+      "settlement_id": "ST-010",
+      "order_id": "TN-010",
+      "collection_idr": 120000,
+      "refund_or_reversal_idr": 0,
+      "fee_idr": -6000,
+      "actual_bank_idr": 112000,
+      "settlement_date": "2026-01-15",
+      "status": "amount_mismatch",
+      "lineage_id": "LIN-010C"
+    }
+  ],
+  "daily_event_movements": [
+    {
+      "effective_date": "2026-01-03",
+      "delivery_sales_idr": 100000,
+      "refunds_idr": 0
+    },
+    {
+      "effective_date": "2026-01-05",
+      "delivery_sales_idr": 180000,
+      "refunds_idr": 0
+    },
+    {
+      "effective_date": "2026-01-06",
+      "delivery_sales_idr": 150000,
+      "refunds_idr": 0
+    },
+    {
+      "effective_date": "2026-01-07",
+      "delivery_sales_idr": 80000,
+      "refunds_idr": 0
+    },
+    {
+      "effective_date": "2026-01-08",
+      "delivery_sales_idr": 120000,
+      "refunds_idr": 0
+    },
+    {
+      "effective_date": "2026-01-09",
+      "delivery_sales_idr": 0,
+      "refunds_idr": 0
+    },
+    {
+      "effective_date": "2026-01-10",
+      "delivery_sales_idr": 0,
+      "refunds_idr": 0
+    },
+    {
+      "effective_date": "2026-01-11",
+      "delivery_sales_idr": 90000,
+      "refunds_idr": 0
+    },
+    {
+      "effective_date": "2026-01-12",
+      "delivery_sales_idr": 110000,
+      "refunds_idr": 0
+    },
+    {
+      "effective_date": "2026-01-13",
+      "delivery_sales_idr": 120000,
+      "refunds_idr": 0
+    },
+    {
+      "effective_date": "2026-01-15",
+      "delivery_sales_idr": 0,
+      "refunds_idr": 30000
+    },
+    {
+      "effective_date": "2026-01-20",
+      "delivery_sales_idr": 250000,
+      "refunds_idr": 0
+    },
+    {
+      "effective_date": "2026-02-03",
+      "delivery_sales_idr": 0,
+      "refunds_idr": 250000
+    }
+  ]
 }
