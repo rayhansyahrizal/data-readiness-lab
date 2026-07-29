@@ -32,7 +32,12 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
-def _validate_pack(directory: Path, fixture_version: str, seed: int) -> dict[str, object]:
+def _validate_pack(
+    directory: Path,
+    fixture_version: str,
+    seed: int,
+    expected_manifest: dict[str, object] | None = None,
+) -> dict[str, object]:
     """Validate a pack without following non-regular filesystem entries."""
     try:
         entries = list(directory.iterdir())
@@ -68,6 +73,8 @@ def _validate_pack(directory: Path, fixture_version: str, seed: int) -> dict[str
             claimed = item.get("sha256")
             if not isinstance(claimed, str) or len(claimed) != 64 or _sha256(directory / item["path"]) != claimed:
                 raise ValueError(f"artifact hash mismatch: {item.get('path')}")
+        if expected_manifest is not None and manifest != expected_manifest:
+            raise ValueError("manifest does not exactly match deterministic fixture metadata")
         return manifest
     except (OSError, json.JSONDecodeError, TypeError, ValueError) as error:
         raise FileExistsError(f"output directory {directory} is not an intact matching fixture pack") from error
@@ -211,14 +218,18 @@ def generate_fixture_pack(output_dir: Path, fixture_version: str, seed: int) -> 
     if fixture_version != SUPPORTED_VERSION:
         raise ValueError(f"unsupported fixture version {fixture_version!r}; expected {SUPPORTED_VERSION}")
     output_dir = Path(output_dir)
-    if output_dir.exists() and any(output_dir.iterdir()):
-        return _validate_pack(output_dir, fixture_version, seed)
+    if output_dir.is_symlink():
+        raise FileExistsError(f"output path {output_dir} must not be a symlink")
+    if output_dir.exists() and not output_dir.is_dir():
+        raise FileExistsError(f"output path {output_dir} is not a directory")
 
     output_dir.parent.mkdir(parents=True, exist_ok=True)
     staging = Path(tempfile.mkdtemp(prefix=f".{output_dir.name}.staging-", dir=output_dir.parent))
     try:
         manifest = _build_pack(staging, fixture_version, seed)
-        _validate_pack(staging, fixture_version, seed)
+        _validate_pack(staging, fixture_version, seed, manifest)
+        if output_dir.exists() and any(output_dir.iterdir()):
+            return _validate_pack(output_dir, fixture_version, seed, manifest)
         os.replace(staging, output_dir)
         return manifest
     finally:

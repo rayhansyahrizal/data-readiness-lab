@@ -217,6 +217,28 @@ class FixtureGeneratorBlackBoxTests(unittest.TestCase):
             self.assertEqual(stale.read_bytes(), b"untouched")
             self.assertEqual(list(output.iterdir()), [stale])
 
+    def test_output_path_symlink_and_non_directory_are_rejected_unchanged(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            parent = Path(temporary)
+            target = parent / "target-pack"
+            self.assertEqual(self.generate(target).returncode, 0)
+            link = parent / "pack-link"
+            link.symlink_to(target, target_is_directory=True)
+            before = self.snapshot(parent)
+            link_before = link.lstat()
+            result = self.generate(link)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertTrue(link.is_symlink())
+            self.assertEqual(link.lstat(), link_before)
+            self.assertEqual(self.snapshot(parent), before)
+
+            regular_file = parent / "not-a-directory"
+            regular_file.write_bytes(b"untouched")
+            before = self.snapshot(parent)
+            result = self.generate(regular_file)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertEqual(self.snapshot(parent), before)
+
     def snapshot(self, directory: Path) -> list[tuple[str, str, bytes | None]]:
         result = []
         for path in sorted(directory.rglob("*")):
@@ -230,6 +252,8 @@ class FixtureGeneratorBlackBoxTests(unittest.TestCase):
             "tampered manifest hash": self._tamper_manifest_hash,
             "missing artifact": lambda out: (out / "events.jsonl").unlink(),
             "artifact directory": lambda out: self._replace_with_directory(out / "products.xlsx"),
+            "canonical orders metadata": lambda out: self._tamper_manifest_field(out, "canonical_orders", 999),
+            "nested quarantine metadata": lambda out: self._tamper_nested_quarantine(out),
         }
         for label, mutate in mutations.items():
             with self.subTest(label=label), tempfile.TemporaryDirectory() as temporary:
@@ -251,6 +275,20 @@ class FixtureGeneratorBlackBoxTests(unittest.TestCase):
     def _replace_with_directory(path: Path) -> None:
         path.unlink()
         path.mkdir()
+
+    @staticmethod
+    def _tamper_manifest_field(output: Path, field: str, value: object) -> None:
+        path = output / "manifest.json"
+        manifest = json.loads(path.read_text())
+        manifest[field] = value
+        path.write_text(json.dumps(manifest))
+
+    @staticmethod
+    def _tamper_nested_quarantine(output: Path) -> None:
+        path = output / "manifest.json"
+        manifest = json.loads(path.read_text())
+        manifest["quarantine"][0]["reason_code"] = "FORGED"
+        path.write_text(json.dumps(manifest))
 
     def test_publish_failure_leaves_destination_absent_and_cleans_staging(self) -> None:
         from fixture_generator import generator
