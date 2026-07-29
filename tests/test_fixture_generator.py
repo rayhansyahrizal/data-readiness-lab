@@ -13,6 +13,7 @@ import tempfile
 import unittest
 import zipfile
 from pathlib import Path
+from unittest import mock
 from xml.etree import ElementTree
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -215,6 +216,53 @@ class FixtureGeneratorBlackBoxTests(unittest.TestCase):
             self.assertNotEqual(result.returncode, 0)
             self.assertEqual(stale.read_bytes(), b"untouched")
             self.assertEqual(list(output.iterdir()), [stale])
+
+    def snapshot(self, directory: Path) -> list[tuple[str, str, bytes | None]]:
+        result = []
+        for path in sorted(directory.rglob("*")):
+            kind = "file" if path.is_file() else "dir"
+            result.append((str(path.relative_to(directory)), kind, path.read_bytes() if kind == "file" else None))
+        return result
+
+    def test_corrupt_existing_packs_are_rejected_without_modification(self) -> None:
+        mutations = {
+            "tampered artifact": lambda out: (out / "orders.csv").write_bytes(b"tampered"),
+            "tampered manifest hash": self._tamper_manifest_hash,
+            "missing artifact": lambda out: (out / "events.jsonl").unlink(),
+            "artifact directory": lambda out: self._replace_with_directory(out / "products.xlsx"),
+        }
+        for label, mutate in mutations.items():
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as temporary:
+                output = Path(temporary) / "pack"
+                self.assertEqual(self.generate(output).returncode, 0)
+                mutate(output)
+                before = self.snapshot(output)
+                self.assertNotEqual(self.generate(output).returncode, 0)
+                self.assertEqual(self.snapshot(output), before)
+
+    @staticmethod
+    def _tamper_manifest_hash(output: Path) -> None:
+        path = output / "manifest.json"
+        manifest = json.loads(path.read_text())
+        manifest["files"][0]["sha256"] = "0" * 64
+        path.write_text(json.dumps(manifest))
+
+    @staticmethod
+    def _replace_with_directory(path: Path) -> None:
+        path.unlink()
+        path.mkdir()
+
+    def test_publish_failure_leaves_destination_absent_and_cleans_staging(self) -> None:
+        from fixture_generator import generator
+
+        with tempfile.TemporaryDirectory() as temporary:
+            parent = Path(temporary)
+            output = parent / "pack"
+            before = self.snapshot(parent)
+            with mock.patch.object(generator.os, "replace", side_effect=OSError("injected")):
+                with self.assertRaises(OSError):
+                    generator.generate_fixture_pack(output, "1.0.0", 20260729)
+            self.assertEqual(self.snapshot(parent), before)
 
 
 if __name__ == "__main__":

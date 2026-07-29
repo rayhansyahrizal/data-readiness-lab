@@ -6,7 +6,11 @@ import csv
 import hashlib
 import io
 import json
+import os
 import random
+import shutil
+import stat
+import tempfile
 import zipfile
 from pathlib import Path
 from typing import Sequence
@@ -17,6 +21,57 @@ ARTIFACT_NAMES = frozenset({
     "orders.csv", "events.jsonl", "settlements.csv", "products.xlsx",
     "expected_results.json", "manifest.json",
 })
+DATA_ARTIFACT_NAMES = ARTIFACT_NAMES - {"manifest.json"}
+
+
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as source:
+        for chunk in iter(lambda: source.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _validate_pack(directory: Path, fixture_version: str, seed: int) -> dict[str, object]:
+    """Validate a pack without following non-regular filesystem entries."""
+    try:
+        entries = list(directory.iterdir())
+        if {entry.name for entry in entries} != ARTIFACT_NAMES:
+            raise ValueError("artifact set is not exact")
+        if any(not stat.S_ISREG(entry.lstat().st_mode) for entry in entries):
+            raise ValueError("every artifact must be a regular file")
+        manifest = json.loads((directory / "manifest.json").read_text(encoding="utf-8"))
+        if not isinstance(manifest, dict):
+            raise ValueError("manifest must be an object")
+        required_keys = {
+            "fixture_version", "seed", "generator", "business_timezone", "files",
+            "physical_rows", "accepted_rows", "quarantined_rows", "duplicate_observations",
+            "canonical_orders", "quarantine", "defect_classes", "answer_key",
+        }
+        if set(manifest) != required_keys:
+            raise ValueError("manifest top-level schema is invalid")
+        if manifest.get("fixture_version") != fixture_version or manifest.get("seed") != seed:
+            raise ValueError("fixture version or seed differs")
+        files = manifest.get("files")
+        answer_key = manifest.get("answer_key")
+        if not isinstance(files, list) or not isinstance(answer_key, dict):
+            raise ValueError("manifest file schema is invalid")
+        if any(set(item) != {"path", "sha256", "physical_rows", "accepted_rows", "quarantined_rows"} for item in files if isinstance(item, dict)):
+            raise ValueError("manifest file entry schema is invalid")
+        if set(answer_key) != {"path", "sha256"}:
+            raise ValueError("manifest answer-key schema is invalid")
+        hash_entries = files + [answer_key]
+        paths = [item.get("path") for item in hash_entries if isinstance(item, dict)]
+        if len(paths) != len(hash_entries) or set(paths) != DATA_ARTIFACT_NAMES or len(paths) != len(set(paths)):
+            raise ValueError("manifest artifact paths are invalid")
+        for item in hash_entries:
+            claimed = item.get("sha256")
+            if not isinstance(claimed, str) or len(claimed) != 64 or _sha256(directory / item["path"]) != claimed:
+                raise ValueError(f"artifact hash mismatch: {item.get('path')}")
+        return manifest
+    except (OSError, json.JSONDecodeError, TypeError, ValueError) as error:
+        raise FileExistsError(f"output directory {directory} is not an intact matching fixture pack") from error
+
 
 ORDERS = [
     ("TN-001", "Shopee", "03/01/2026", "100000", "0", "LIN-001A"),
@@ -100,26 +155,7 @@ def _xlsx_bytes(rows: list[list[str]]) -> bytes:
     return output.getvalue()
 
 
-def generate_fixture_pack(output_dir: Path, fixture_version: str, seed: int) -> dict[str, object]:
-    if fixture_version != SUPPORTED_VERSION:
-        raise ValueError(f"unsupported fixture version {fixture_version!r}; expected {SUPPORTED_VERSION}")
-    output_dir = Path(output_dir)
-    if output_dir.exists() and any(output_dir.iterdir()):
-        present = {path.name for path in output_dir.iterdir()}
-        manifest_path = output_dir / "manifest.json"
-        if present != ARTIFACT_NAMES or not manifest_path.is_file():
-            raise FileExistsError(
-                f"output directory {output_dir} is not an exact fixture pack; refusing to retain or overwrite files"
-            )
-        try:
-            prior = json.loads(manifest_path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError) as error:
-            raise FileExistsError(f"output directory {output_dir} has an invalid fixture manifest") from error
-        if prior.get("fixture_version") != fixture_version or prior.get("seed") != seed:
-            raise FileExistsError(
-                f"output directory {output_dir} contains a different fixture version or seed"
-            )
-    output_dir.mkdir(parents=True, exist_ok=True)
+def _build_pack(output_dir: Path, fixture_version: str, seed: int) -> dict[str, object]:
     rng = random.Random(seed)
     customers = [f"CUST-{rng.randrange(100000, 999999)}" for _ in ORDERS]
     skus = [f"SKU-{rng.choice(('BATIK', 'KOPI', 'SAMBAL', 'ROTAN'))}-{rng.randrange(10, 99)}" for _ in ORDERS]
@@ -169,3 +205,22 @@ def generate_fixture_pack(output_dir: Path, fixture_version: str, seed: int) -> 
     }
     (output_dir / "manifest.json").write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8", newline="\n")
     return manifest
+
+
+def generate_fixture_pack(output_dir: Path, fixture_version: str, seed: int) -> dict[str, object]:
+    if fixture_version != SUPPORTED_VERSION:
+        raise ValueError(f"unsupported fixture version {fixture_version!r}; expected {SUPPORTED_VERSION}")
+    output_dir = Path(output_dir)
+    if output_dir.exists() and any(output_dir.iterdir()):
+        return _validate_pack(output_dir, fixture_version, seed)
+
+    output_dir.parent.mkdir(parents=True, exist_ok=True)
+    staging = Path(tempfile.mkdtemp(prefix=f".{output_dir.name}.staging-", dir=output_dir.parent))
+    try:
+        manifest = _build_pack(staging, fixture_version, seed)
+        _validate_pack(staging, fixture_version, seed)
+        os.replace(staging, output_dir)
+        return manifest
+    finally:
+        if staging.exists():
+            shutil.rmtree(staging)
