@@ -3,11 +3,20 @@ import hashlib, json, os, shutil, stat, tempfile
 from datetime import datetime, time, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
-from canonical.core import validate_snapshot, CanonicalError
+from canonical.core import ALL_FILES as CANONICAL_FILES, build as build_canonical, validate_snapshot, CanonicalError
 
 FILES=("mart_daily_channel.jsonl","mart_order_lifetime.jsonl","mart_settlement_reconciliation.jsonl","mart_executive_controls.jsonl","lineage_bridge.jsonl","ai_catalog.json","quality_results.json")
 ALL_FILES=frozenset(FILES)|{"manifest.json"}; SCHEMA_VERSION="1.1.0"
 class MartError(ValueError): pass
+
+META_SCHEMA=(("publication_id","string",False),("report_as_of_utc","string",False),("business_timezone","string",False),("currency","string",False),("metric_version","string",False),("schema_version","string",False),("input_batch_id","string",False),("input_manifest_sha256","string",False),("quality_state","string",False),("freshness_state","string",False))
+SCHEMAS={
+ "daily_channel":(("business_date","string",False),("channel","string",False),("delivery_sales_idr","integer",False),("approved_refunds_idr","integer",False),("net_sales_effect_idr","integer",False),("delivered_orders","integer",False),("lineage_refs","array",False))+META_SCHEMA,
+ "order_lifetime":(("order_id","string",False),("canonical_order_id","string",False),("channel","string",False),("delivery_sales_idr","integer",False),("approved_refunds_idr","integer",False),("lifetime_net_sales_idr","integer",False),("fee_expense_idr","integer",False),("aov_eligible","boolean",False),("cancelled_as_of","boolean",False),("lineage_refs","array",False))+META_SCHEMA,
+ "settlement_reconciliation":tuple((n,"integer" if n.endswith("_idr") else "string",False) for n in ("actual_bank_idr","canonical_order_id","canonical_settlement_id","collection_idr","expected_payout_idr","fee_expense_idr","refund_or_reversal_idr","settlement_business_date","settlement_date_raw","settlement_id","settlement_variance_idr","signed_fee_idr","status","knowledge_instant_utc","reconciliation_status"))+(("exception_code","string",True),("exception_policy","string",True),("lineage_refs","array",False))+META_SCHEMA,
+ "executive_controls":(("control_id","string",False),)+tuple((n,"integer",n=="aov_idr") for n in ("canonical_orders","delivered_orders","cancelled_orders","delivery_sales_idr","approved_refunds_idr","lifetime_net_sales_idr","fee_expense_idr","expected_payout_idr","actual_bank_idr","settlement_variance_idr","unreconciled_idr","aov_numerator_idr","aov_denominator_orders","aov_idr","duplicate_observations","quarantined_observations","duplicate_quarantine_contribution_idr","blocking_exceptions","disclosed_exceptions"))+(("publication_state","string",False),("lineage_refs","array",False))+META_SCHEMA,
+ "lineage_lookup":tuple((n,"integer" if n=="contribution_idr" else "string",False) for n in ("lineage_ref","mart_dataset","mart_row_key","mart_field","canonical_target_type","canonical_target_id","evidence_id","source_sha256","source_path","source_row_locator","contributing_role","contribution_idr","contribution_rule"))+META_SCHEMA,
+}
 
 def _sha(b): return hashlib.sha256(b).hexdigest()
 def _json(x,pretty=False): return (json.dumps(x,ensure_ascii=False,sort_keys=True,separators=None if pretty else (",",":"),indent=2 if pretty else None)+"\n").encode()
@@ -99,20 +108,16 @@ def make(input_dir,cutoff,metric,mhash,manifest):
     executive=[{"control_id":"phase1-total","canonical_orders":len(orders),"delivered_orders":den,"cancelled_orders":sum(x["cancelled_as_of"] for x in lifetime),"delivery_sales_idr":delivery,"approved_refunds_idr":refund,"lifetime_net_sales_idr":net,"fee_expense_idr":sum(x["fee_expense_idr"] for x in lifetime),"expected_payout_idr":sum(x["expected_payout_idr"] for x in sm),"actual_bank_idr":sum(x["actual_bank_idr"] for x in sm),"settlement_variance_idr":sum(x["settlement_variance_idr"] for x in sm),"unreconciled_idr":sum(x["settlement_variance_idr"] for x in sm),"aov_numerator_idr":net,"aov_denominator_orders":den,"aov_idr":aov,"duplicate_observations":sum(x["role"]=="duplicate_evidence" for x in lin),"quarantined_observations":sum(x["role"]=="quarantined_evidence" for x in lin),"duplicate_quarantine_contribution_idr":0,"blocking_exceptions":0,"disclosed_exceptions":sum(bool(x["exception_policy"]) for x in sm),"publication_state":"PUBLISHED_WITH_DISCLOSURE","lineage_refs":control_refs+[r for x in lifetime+sm for r in x["lineage_refs"]],**meta}]
     bridge.sort(key=lambda x:x["lineage_ref"]); refs={x["lineage_ref"] for x in bridge}; check("lineage_unique",len(refs)==len(bridge)); check("lineage_refs_resolve",all(r in refs for x in daily+lifetime+sm+executive for r in x["lineage_refs"])); check("lineage_financial_roles",all((not x["delivery_sales_idr"] or {"order_amount_discount","delivery_event"}<={next(b["contributing_role"] for b in bridge if b["lineage_ref"]==r) for r in x["lineage_refs"]}) for x in lifetime))
     datasets_rows={"daily_channel":daily,"order_lifetime":lifetime,"settlement_reconciliation":sm,"executive_controls":executive,"lineage_lookup":bridge}; files={"daily_channel":"mart_daily_channel.jsonl","order_lifetime":"mart_order_lifetime.jsonl","settlement_reconciliation":"mart_settlement_reconciliation.jsonl","executive_controls":"mart_executive_controls.jsonl","lineage_lookup":"lineage_bridge.jsonl"}; keys={"daily_channel":["business_date","channel"],"order_lifetime":["order_id"],"settlement_reconciliation":["settlement_id"],"executive_controls":["control_id"],"lineage_lookup":["lineage_ref"]}
-    def typ(v): return "boolean" if isinstance(v,bool) else "integer" if isinstance(v,int) else "string" if isinstance(v,str) else "array" if isinstance(v,list) else "null"
     catalog_ds=[]
-    fallback={
-        "daily_channel":["business_date","channel","delivery_sales_idr","approved_refunds_idr","net_sales_effect_idr","delivered_orders","lineage_refs",*meta],
-        "settlement_reconciliation":[*settlements[0],"knowledge_instant_utc","reconciliation_status","exception_code","exception_policy","lineage_refs",*meta] if settlements else [],
-    }
     for n,rows in datasets_rows.items():
-        cols=list(rows[0]) if rows else fallback.get(n,[])
-        catalog_ds.append({"name":n,"file":files[n],"physical_columns":[{"name":c,"type":next((typ(r[c]) for r in rows if r.get(c) is not None),"string"),"nullable":c in {"exception_code","exception_policy","aov_idr"} or any(r.get(c) is None for r in rows),"definition":("Integer Indonesian rupiah." if c.endswith("_idr") else f"Governed {c.replace('_',' ')}.")} for c in cols],"grain":keys[n],"stable_key":keys[n],"formulas":{"net_sales_effect_idr":"delivery_sales_idr - approved_refunds_idr","settlement_variance_idr":"actual_bank_idr - expected_payout_idr"},"cutoff_semantics":"Events require observed_at_utc <= cutoff. Settlements become knowable at 23:59:59 Asia/Jakarta on settlement_business_date.","timezone":"Asia/Jakarta","quality":"Executable blocking checks passed","limitations":"Phase-1 local files; filesystem read-only is not service authorization and owner/admin can override.","provenance":"Every lineage_refs value resolves to lineage_lookup evidence, source path/hash/locator and contribution rule."})
+        schema=SCHEMAS[n]
+        check("physical_schema",all(set(r)=={c[0] for c in schema} for r in rows),n)
+        catalog_ds.append({"name":n,"schema_version":SCHEMA_VERSION,"file":files[n],"physical_columns":[{"name":c,"type":t,"nullable":nullable,"definition":("Integer Indonesian rupiah." if c.endswith("_idr") else f"Governed {c.replace('_',' ')}.")} for c,t,nullable in schema],"grain":keys[n],"stable_key":keys[n],"formulas":{"net_sales_effect_idr":"delivery_sales_idr - approved_refunds_idr","settlement_variance_idr":"actual_bank_idr - expected_payout_idr"},"cutoff_semantics":"Events require observed_at_utc <= cutoff. Settlements become knowable at 23:59:59 Asia/Jakarta on settlement_business_date.","timezone":"Asia/Jakarta","quality":"Executable blocking checks passed","limitations":"Phase-1 local files; filesystem read-only is not service authorization and owner/admin can override.","provenance":"Every lineage_refs value resolves to lineage_lookup evidence, source path/hash/locator and contribution rule."})
     catalog={**meta,"access":{"mode":"read_only","read_only":True,"writable":False,"allow_list":list(datasets_rows),"sensitive_fields_exposed":False,"row_limit":10000},"datasets":catalog_ds}
     check("ai_catalog_exact",set(catalog["access"]["allow_list"])==set(datasets_rows) and all([c["name"] for c in d["physical_columns"]]==list(datasets_rows[d["name"]][0]) if datasets_rows[d["name"]] else True for d in catalog_ds)); check("forbidden_fields",not any(k in {"customer_ref","raw_payload"} for rows in datasets_rows.values() for r in rows for k in r))
     if failures: raise MartError("publication quality gate failed: "+json.dumps(failures,sort_keys=True))
     disclosures=[{"exception_code":x["exception_code"],"settlement_id":x["settlement_id"],"variance_idr":x["settlement_variance_idr"],"policy":x["exception_policy"]} for x in sm if x["exception_policy"]]
-    check_ids=["canonical_order_keys","event_keys","settlement_keys","lineage_evidence_keys","event_orders_resolve","canonical_provenance_targets","settlement_exception_exact","settlement_equation","daily_grain","lifetime_grain","settlement_grain","daily_formulas","lifetime_formulas","no_over_refund","daily_lifetime_known_reconciliation","no_future_facts","lineage_unique","lineage_refs_resolve","lineage_financial_roles","ai_catalog_exact","forbidden_fields"]
+    check_ids=["canonical_order_keys","event_keys","settlement_keys","lineage_evidence_keys","event_orders_resolve","canonical_provenance_targets","settlement_exception_exact","settlement_equation","daily_grain","lifetime_grain","settlement_grain","daily_formulas","lifetime_formulas","no_over_refund","daily_lifetime_known_reconciliation","no_future_facts","lineage_unique","lineage_refs_resolve","lineage_financial_roles","physical_schema","ai_catalog_exact","forbidden_fields"]
     quality={**meta,"publication_state":"PUBLISHED_WITH_DISCLOSURE","blocking_failures":[],"checks":[{"check_id":x,"result":"PASS","blocking":True} for x in check_ids],"disclosed_exceptions":disclosures}
     return pid,{"mart_daily_channel.jsonl":daily,"mart_order_lifetime.jsonl":lifetime,"mart_settlement_reconciliation.jsonl":sm,"mart_executive_controls.jsonl":executive,"lineage_bridge.jsonl":bridge,"ai_catalog.json":catalog,"quality_results.json":quality}
 
@@ -130,10 +135,19 @@ def validate_publication(path,pid):
         return m
     except (OSError,KeyError,TypeError,json.JSONDecodeError) as e: raise MartError("publication failed complete authentication") from e
 
-def publish(input_dir,output_dir,report_as_of_utc,metric_version):
+def publish(landing_dir,input_dir,output_dir,report_as_of_utc,metric_version):
     cutoff=_time(report_as_of_utc)
     if metric_version!="1.0.0": raise MartError("unsupported metric-version")
-    manifest,mhash=authenticate(Path(input_dir)); pid,artifacts=make(input_dir,cutoff,metric_version,mhash,manifest); output=Path(output_dir)
+    supplied=Path(input_dir); manifest,_=authenticate(supplied)
+    try:
+        with tempfile.TemporaryDirectory(prefix=".marts-canonical-rebuild-",dir=Path(landing_dir).parent) as td:
+            rebuilt=Path(td)/"canonical"; build_canonical(Path(landing_dir),rebuilt)
+            rebuilt_manifest,mhash=authenticate(rebuilt)
+            if manifest["input_batch_id"]!=rebuilt_manifest["input_batch_id"] or any(_read(supplied/x)!=_read(rebuilt/x) for x in CANONICAL_FILES):
+                raise MartError("canonical snapshot is not the exact derivation of authenticated landing evidence")
+            pid,artifacts=make(rebuilt,cutoff,metric_version,mhash,rebuilt_manifest)
+    except CanonicalError as e: raise MartError("landing evidence failed authentication or canonical reconstruction") from e
+    manifest=rebuilt_manifest; output=Path(output_dir)
     if output.is_symlink() or (output.exists() and not stat.S_ISDIR(output.lstat().st_mode)): raise MartError("output-dir must be a real directory")
     output.parent.mkdir(parents=True,exist_ok=True); staging=Path(tempfile.mkdtemp(prefix=f".{output.name}.staging-",dir=output.parent))
     try:

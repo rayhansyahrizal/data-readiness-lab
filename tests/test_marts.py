@@ -1,5 +1,5 @@
 """Black-box tests for the governed mart publication seam."""
-import json, os, shutil, subprocess, sys, tempfile, unittest
+import hashlib, json, os, shutil, subprocess, sys, tempfile, unittest
 from pathlib import Path
 ROOT=Path(__file__).resolve().parents[1]
 class MartTests(unittest.TestCase):
@@ -11,10 +11,13 @@ class MartTests(unittest.TestCase):
   x=subprocess.run([sys.executable,"-m",m,*map(str,a)],cwd=ROOT,text=True,capture_output=True,env=env)
   if ok:self.assertEqual(x.returncode,0,x.stderr)
   return x
- def build(self,cut="2026-02-15T02:00:00Z",out=None,env=None): return self.cmd("marts","--input-dir",self.c,"--output-dir",out or self.o,"--report-as-of-utc",cut,"--metric-version","1.0.0",env=env)
+ def build(self,cut="2026-02-15T02:00:00Z",out=None,env=None,landing=None,canonical=None): return self.cmd("marts","--landing-dir",landing or self.l,"--input-dir",canonical or self.c,"--output-dir",out or self.o,"--report-as-of-utc",cut,"--metric-version","1.0.0",env=env)
  def rows(self,n): return [json.loads(x) for x in (self.o/n).read_text().splitlines()]
  def snap(self,p=None):
   p=p or self.o; return [(x.name,x.read_bytes()) for x in sorted(p.iterdir())]
+ def forge(self,name,mutate):
+  rows=[json.loads(x) for x in (self.c/name).read_text().splitlines()]; mutate(rows); data=b"".join((json.dumps(x,sort_keys=True,separators=(",",":"))+"\n").encode() for x in rows); (self.c/name).write_bytes(data)
+  m=json.loads((self.c/"manifest.json").read_text()); f=next(x for x in m["files"] if x["path"]==name); f.update(sha256=hashlib.sha256(data).hexdigest(),bytes=len(data),rows=len(rows)); (self.c/"manifest.json").write_text(json.dumps(m,indent=2,sort_keys=True)+"\n")
  def test_literal_marts_controls_and_cutoff(self):
   self.assertEqual(self.build().returncode,0)
   d=[(x["business_date"],x["channel"],x["delivery_sales_idr"],x["approved_refunds_idr"],x["net_sales_effect_idr"]) for x in self.rows("mart_daily_channel.jsonl")]
@@ -40,6 +43,16 @@ class MartTests(unittest.TestCase):
   ai=json.loads((self.o/"ai_catalog.json").read_text())
   for d in ai["datasets"]:
    rows=self.rows(d["file"])
+   self.assertEqual(d["schema_version"],"1.1.0")
+   self.assertTrue(set(d["grain"])<={x["name"] for x in d["physical_columns"]})
+   if rows:self.assertEqual({x["name"] for x in d["physical_columns"]},set(rows[0]))
+  schemas={d["name"]:{x["name"]:(x["type"],x["nullable"]) for x in d["physical_columns"]} for d in ai["datasets"]}
+  self.assertEqual(schemas["daily_channel"]["delivery_sales_idr"],("integer",False)); self.assertEqual(schemas["daily_channel"]["delivered_orders"],("integer",False))
+  self.assertEqual(schemas["settlement_reconciliation"]["actual_bank_idr"],("integer",False)); self.assertEqual(schemas["settlement_reconciliation"]["exception_code"],("string",True))
+  nominal=self.r/"nominal"; self.assertEqual(self.build(out=nominal).returncode,0)
+  nominal_ai=json.loads((nominal/"ai_catalog.json").read_text()); self.assertEqual([(d["name"],d["physical_columns"]) for d in ai["datasets"]],[(d["name"],d["physical_columns"]) for d in nominal_ai["datasets"]])
+  for d in nominal_ai["datasets"]:
+   rows=[json.loads(x) for x in (nominal/d["file"]).read_text().splitlines()]
    if rows:self.assertEqual({x["name"] for x in d["physical_columns"]},set(rows[0]))
   self.assertTrue(all((x.stat().st_mode & 0o777)==0o444 for x in self.o.iterdir()))
  def test_replay_tamper_input_symlinks_and_failure_are_safe(self):
@@ -48,4 +61,14 @@ class MartTests(unittest.TestCase):
   fresh=self.r/"fresh"; (self.c/"canonical_orders.jsonl").write_bytes((self.c/"canonical_orders.jsonl").read_bytes()+b"{}\n"); self.assertNotEqual(self.build(out=fresh).returncode,0); self.assertFalse(fresh.exists())
   shutil.rmtree(self.o); self.o.symlink_to(self.r); self.assertNotEqual(self.build().returncode,0)
   self.o.unlink(); env=os.environ.copy(); env["MARTS_INJECT_PUBLISH_FAILURE"]="1"; self.assertNotEqual(self.build(env=env).returncode,0); self.assertFalse(self.o.exists()); self.assertFalse(list(self.r.glob(".publication.staging-*")))
+ def test_coordinated_canonical_financial_and_lineage_forgery_is_rejected(self):
+  self.forge("business_events.jsonl",lambda rows: rows[4].update(amount_idr=31000))
+  self.forge("lineage.jsonl",lambda rows: rows[0].update(contribution_idr=31000))
+  self.assertNotEqual(self.build().returncode,0); self.assertFalse(self.o.exists())
+ def test_coordinated_settlement_forgery_and_other_valid_landing_are_rejected(self):
+  self.forge("settlements.jsonl",lambda rows: rows[0].update(actual_bank_idr=rows[0]["actual_bank_idr"]+1,settlement_variance_idr=rows[0]["settlement_variance_idr"]+1))
+  self.forge("exceptions.jsonl",lambda rows: rows[0].update(variance_idr=rows[0].get("variance_idr",0)+1))
+  self.assertNotEqual(self.build().returncode,0); self.assertFalse(self.o.exists())
+  p2=self.r/"pack2"; l2=self.r/"landing2"; self.cmd("fixture_generator","--output-dir",p2,"--fixture-version","1.0.0","--seed","7",ok=True); self.cmd("ingestion","--input-dir",p2,"--output-dir",l2,"--ingested-at","2026-07-29T10:11:12Z",ok=True)
+  self.assertNotEqual(self.build(landing=l2).returncode,0); self.assertFalse(self.o.exists())
 if __name__=="__main__":unittest.main()
