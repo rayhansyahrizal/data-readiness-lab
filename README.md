@@ -26,6 +26,16 @@ python3 -m ingestion \
 
 The command verifies the exact artifact set and every manifest hash before writing. It publishes content-addressed exact source copies, `metadata.sqlite`, deterministic `audit.json`, and `evidence.jsonl` in one directory rename. Every business row is classified exactly once as `accepted`, `duplicate_suppressed`, or `quarantined`; raw record bytes, source hash/locator, extracted native metadata, duplicate lineage, and quarantine reason remain available. Manifest and answer-key files are registered artifacts but are not business rows. Replaying the same pack is a successful zero-write no-op; a different batch, damaged source/store, symlink, or non-regular input is rejected without changing the store. `ingested_at` must be an explicit canonical UTC timestamp such as `2026-07-29T10:11:12Z`; it is audit metadata and does not affect deterministic `batch_id`.
 
+Build the canonical snapshot only from that fully authenticated landing store:
+
+```bash
+python3 -m canonical \
+  --input-dir build/landing-v1 \
+  --output-dir build/canonical-v1
+```
+
+The canonical CLI completely re-authenticates ingestion before reading evidence. It atomically publishes the exact JSONL tables `canonical_orders`, `order_lines`, `business_events`, `settlements`, `products`, `exceptions`, and `lineage`, plus a manifest containing the input batch identity, SHA-256, byte and row counts, and reconciliation invariants. Replaying an intact identical snapshot is a zero-write no-op; tampered, stale, symlinked, or differently sourced snapshots are rejected unchanged. Domain language is defined in `CONTEXT.md`.
+
 The planned 90-day expanded dataset—including header drift, orphan records, and batched file arrivals—is a later seam milestone. Those scale and ingestion cases are intentionally not part of `v1.0.0`.
 
 Run its black-box tests with:
