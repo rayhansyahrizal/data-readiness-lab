@@ -27,6 +27,12 @@ Signed seller-perspective entries bridge collections, platform subsidy, refunds,
 
 Only reference-supported exact matches are auto-approved. Every unmatched value needs an allow-listed reason; no balancing plug is permitted.
 
+Canonical settlements currently have no observation timestamp. Phase 1 therefore uses a
+deterministic conservative knowledge instant: **23:59:59 Asia/Jakarta on
+`settlement_business_date`** (converted to UTC for cutoff comparison). Before that instant,
+the settlement and all of its fees, expected payout, bank amount, variance, and disclosures
+are absent from every mart and control.
+
 ## Required KPIs
 
 - Daily recognized merchandise sales: WIB date × channel.
@@ -43,3 +49,7 @@ Each KPI exposes metric version, grain keys, reporting window, `report_as_of_utc
 ## Publication gates
 
 Block publication if sales contain cancellations, fees/shipping enter sales, refund timing is wrong, duplicates contribute twice, delivered/AOV counts disagree, allocations fail exact reconciliation, lineage is incomplete, or unmatched values lack categories. Atomic publication leaves the prior good version unchanged after failure.
+
+Phase-1 governance is a local-filesystem boundary: published artifacts are regular files
+with mode `0444`, and AI catalog entries are read-only/non-writable. This is not
+service-level authorization; the filesystem owner or an administrator can override modes.

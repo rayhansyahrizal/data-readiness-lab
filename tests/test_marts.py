@@ -28,9 +28,23 @@ class MartTests(unittest.TestCase):
   q=json.loads((self.o/"quality_results.json").read_text()); self.assertFalse(q["blocking_failures"]); self.assertEqual(q["disclosed_exceptions"][0]["variance_idr"],-2000)
   ai=json.loads((self.o/"ai_catalog.json").read_text()); self.assertEqual(ai["access"]["allow_list"],["daily_channel","order_lifetime","settlement_reconciliation","executive_controls","lineage_lookup"]); self.assertFalse(ai["access"]["writable"])
   self.assertTrue(self.rows("lineage_bridge.jsonl")); self.assertNotIn("customer_ref",b"".join(x[1] for x in self.snap()).decode())
+ def test_early_cutoff_is_zero_and_catalog_lineage_and_modes_are_exact(self):
+  self.assertEqual(self.build("2026-01-01T00:00:00Z").returncode,0)
+  self.assertEqual(self.rows("mart_daily_channel.jsonl"),[]); self.assertEqual(self.rows("mart_settlement_reconciliation.jsonl"),[])
+  orders=self.rows("mart_order_lifetime.jsonl"); self.assertEqual(len(orders),10)
+  self.assertTrue(all(not x["delivery_sales_idr"] and not x["approved_refunds_idr"] and not x["fee_expense_idr"] and not x["aov_eligible"] for x in orders))
+  e=self.rows("mart_executive_controls.jsonl")[0]; self.assertEqual(tuple(e[k] for k in ("delivery_sales_idr","approved_refunds_idr","fee_expense_idr","expected_payout_idr","actual_bank_idr","settlement_variance_idr")),(0,0,0,0,0,0)); self.assertIsNone(e["aov_idr"])
+  bridge=self.rows("lineage_bridge.jsonl"); refs={x["lineage_ref"] for x in bridge}; self.assertEqual(len(refs),len(bridge))
+  for name in ("mart_daily_channel.jsonl","mart_order_lifetime.jsonl","mart_settlement_reconciliation.jsonl","mart_executive_controls.jsonl"):
+   for row in self.rows(name): self.assertTrue(set(row["lineage_refs"])<=refs)
+  ai=json.loads((self.o/"ai_catalog.json").read_text())
+  for d in ai["datasets"]:
+   rows=self.rows(d["file"])
+   if rows:self.assertEqual({x["name"] for x in d["physical_columns"]},set(rows[0]))
+  self.assertTrue(all((x.stat().st_mode & 0o777)==0o444 for x in self.o.iterdir()))
  def test_replay_tamper_input_symlinks_and_failure_are_safe(self):
   self.assertEqual(self.build().returncode,0); before=self.snap(); r=self.build(); self.assertEqual(r.returncode,0); self.assertIn('"files_written": 0',r.stdout); self.assertEqual(before,self.snap())
-  (self.o/"ai_catalog.json").write_text("{}\n"); bad=self.snap(); self.assertNotEqual(self.build().returncode,0); self.assertEqual(bad,self.snap())
+  os.chmod(self.o/"ai_catalog.json",0o644); (self.o/"ai_catalog.json").write_text("{}\n"); os.chmod(self.o/"ai_catalog.json",0o444); bad=self.snap(); self.assertNotEqual(self.build().returncode,0); self.assertEqual(bad,self.snap())
   fresh=self.r/"fresh"; (self.c/"canonical_orders.jsonl").write_bytes((self.c/"canonical_orders.jsonl").read_bytes()+b"{}\n"); self.assertNotEqual(self.build(out=fresh).returncode,0); self.assertFalse(fresh.exists())
   shutil.rmtree(self.o); self.o.symlink_to(self.r); self.assertNotEqual(self.build().returncode,0)
   self.o.unlink(); env=os.environ.copy(); env["MARTS_INJECT_PUBLISH_FAILURE"]="1"; self.assertNotEqual(self.build(env=env).returncode,0); self.assertFalse(self.o.exists()); self.assertFalse(list(self.r.glob(".publication.staging-*")))
