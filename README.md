@@ -1,5 +1,7 @@
 # Data Readiness Lab
 
+[![tests](https://github.com/rayhansyahrizal/data-readiness-lab/actions/workflows/tests.yml/badge.svg)](https://github.com/rayhansyahrizal/data-readiness-lab/actions/workflows/tests.yml)
+
 A small, fully reproducible data pipeline for a fictional Indonesian online shop ("TokoNusantara"). It
 takes deliberately messy order, settlement and product files, and turns them into management numbers
 you can trace back to the exact source row that produced them.
@@ -57,6 +59,39 @@ Run the tests (29 tests):
 python3 -m unittest discover -s tests -v
 ```
 
+## Example run
+
+Output from the four commands above, trimmed. Three rows of the generated `orders.csv`: one channel
+written three ways, three date formats, three ways of writing a rupiah amount.
+
+```
+order_id,channel_raw,delivery_date_raw,list_amount_raw,...
+TN-001,Shopee,03/01/2026,100000,...
+TN-002,tokopedia,2026-01-05,Rp 200.000,...
+TN-003,WhatsApp,2026/01/06,"150,000",...
+```
+
+Ingestion audit (`landing-v1/audit.json`): 48 physical rows, 46 accepted, 1 duplicate suppressed,
+1 quarantined. Nothing is dropped silently.
+
+Executive control mart (`publication-v1/mart_executive_controls.jsonl`), selected fields:
+
+| Field | Value |
+|---|---:|
+| canonical orders | 10 |
+| delivered / cancelled | 9 / 1 |
+| delivery sales | Rp 1,200,000 |
+| approved refunds | Rp 280,000 |
+| lifetime net sales | Rp 920,000 |
+| platform fees (expense) | Rp 47,000 |
+| expected payout | Rp 873,000 |
+| actually in the bank | Rp 871,000 |
+| **unreconciled** | **Rp -2,000** |
+| publication state | `PUBLISHED_WITH_DISCLOSURE` |
+
+The Rp 2,000 gap is the planted `ST-010` settlement mismatch. The pipeline finds it, names it, links it to
+its source rows, and publishes with a disclosure instead of hiding it or refusing to report at all.
+
 ## Reporting conventions
 
 Locked in [`docs/mission.md`](docs/mission.md) and [`docs/metric-contracts.md`](docs/metric-contracts.md):
@@ -89,3 +124,7 @@ These are synthetic management-reporting conventions for this lab, not accountin
 | [`docs/phase-1-mvp-architecture.html`](docs/phase-1-mvp-architecture.html) | Architecture diagram |
 
 All data in this repository is synthetic.
+
+## License
+
+[MIT](LICENSE).
