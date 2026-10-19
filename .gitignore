@@ -9,3 +9,6 @@ build/
 dist/
 data/raw/
 data/quarantine/
+
+# private notes, not for the public repo
+docs/objective-thesis-check-world-models-robotics-data.md
